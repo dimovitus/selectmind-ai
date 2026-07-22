@@ -69,7 +69,11 @@ English (primary), with multilingual action support
 
 ## Privacy Policy URL
 
-Required before publishing. Host a simple page stating:
+Host `docs/privacy.html` on GitHub Pages (see below). Use this URL in the Chrome Web Store:
+
+**https://dimovitus.github.io/selectmind-ai/privacy.html**
+
+Required statements:
 - No data collection by SelectMind AI
 - API keys and conversations stored locally
 - Third-party AI providers receive user prompts per their policies
@@ -104,6 +108,6 @@ Upload `selectmind-ai-v0.1.0.zip` to the [Chrome Web Store Developer Dashboard](
 - [ ] Run `npm run build` with zero TypeScript errors
 - [ ] Run `npm run test` and `npm run test:e2e`
 - [ ] Test on fresh Chrome profile (install → onboarding → first action)
-- [ ] Publish privacy policy URL
+- [ ] Publish privacy policy URL → `https://dimovitus.github.io/selectmind-ai/privacy.html`
 - [ ] Prepare 5+ screenshots
 - [ ] Review permissions in manifest match store justification

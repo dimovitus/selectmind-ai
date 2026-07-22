@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Privacy Policy — SelectMind AI</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body {
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      line-height: 1.6;
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 3rem;
+    }
+    h1 { font-size: 1.75rem; margin-bottom: 0.25rem; }
+    h2 { font-size: 1.1rem; margin-top: 2rem; }
+    p, li { color: #444; }
+    @media (prefers-color-scheme: dark) {
+      body { background: #111; color: #eee; }
+      p, li { color: #ccc; }
+      a { color: #8ab4ff; }
+    }
+    .meta { font-size: 0.9rem; opacity: 0.75; }
+  </style>
+</head>
+<body>
+  <h1>Privacy Policy</h1>
+  <p class="meta"><strong>SelectMind AI</strong> · Last updated: July 22, 2026</p>
+
+  <p>
+    SelectMind AI is a Chrome browser extension that helps you analyze, explain, translate,
+    and chat about text you select on web pages using AI providers you configure yourself.
+  </p>
+
+  <h2>Summary</h2>
+  <ul>
+    <li>We do <strong>not</strong> operate servers that collect your personal data.</li>
+    <li>Your settings, conversations, and API keys stay <strong>on your device</strong>.</li>
+    <li>When you run an AI action, requests go <strong>directly from your browser</strong> to the AI provider you chose (OpenAI, Anthropic, Google Gemini, Ollama, etc.).</li>
+    <li>We do <strong>not</strong> use analytics, advertising, or tracking in the extension.</li>
+  </ul>
+
+  <h2>Data stored locally</h2>
+  <p>The extension stores the following data locally in your browser:</p>
+  <ul>
+    <li><strong>Settings</strong> — theme, language preferences, toolbar layout, and similar options.</li>
+    <li><strong>API keys</strong> — encrypted using Web Crypto (AES-GCM) and saved in Chrome local storage. Keys are never sent to us.</li>
+    <li><strong>Conversations</strong> — chat history and messages in IndexedDB on your device.</li>
+    <li><strong>Custom actions & pipelines</strong> — prompts and workflows you create or import.</li>
+  </ul>
+  <p>You can delete conversations from the side panel or clear all data by uninstalling the extension.</p>
+
+  <h2>Data sent to third parties (AI providers)</h2>
+  <p>
+    When you trigger an action (Explain, Translate, Chat, etc.), the extension may include
+    in the request to your configured AI provider:
+  </p>
+  <ul>
+    <li>Text you selected on the page</li>
+    <li>Page title and URL</li>
+    <li>Your prompt and conversation history for that thread</li>
+  </ul>
+  <p>
+    This data is sent <strong>only when you initiate an action</strong>, and only to the
+    provider and endpoint you configured. That provider’s own privacy policy applies
+    (for example OpenAI, Anthropic, or Google).
+  </p>
+
+  <h2>Permissions</h2>
+  <p>The extension requests Chrome permissions solely to provide its features:</p>
+  <ul>
+    <li><strong>storage</strong> — save settings and encrypted API keys</li>
+    <li><strong>activeTab</strong> — read selected text and page context on the current tab</li>
+    <li><strong>sidePanel</strong> — show the workspace side panel</li>
+    <li><strong>contextMenus</strong> — right-click actions on selected text</li>
+    <li><strong>clipboardRead</strong> — paste into chat when you use paste</li>
+    <li><strong>alarms</strong> — optional automatic cleanup of old conversations</li>
+    <li><strong>host access (&lt;all_urls&gt;)</strong> — inject the toolbar and chat UI on pages you visit</li>
+  </ul>
+
+  <h2>Donations</h2>
+  <p>
+    The extension may show an optional link to support development via Privat24.
+    Donations are handled entirely outside the extension by PrivatBank; we do not receive
+    or store payment data through the extension.
+  </p>
+
+  <h2>Children</h2>
+  <p>SelectMind AI is not directed at children under 13. We do not knowingly collect data from anyone.</p>
+
+  <h2>Changes</h2>
+  <p>We may update this policy. The “Last updated” date at the top will change when we do.</p>
+
+  <h2>Contact</h2>
+  <p>
+    Questions or requests: open an issue on
+    <a href="https://github.com/Dimovitus/selectmind-ai">GitHub — selectmind-ai</a>
+    or contact the developer via the Chrome Web Store listing.
+  </p>
+</body>
+</html>
