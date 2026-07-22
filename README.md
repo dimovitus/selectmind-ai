@@ -1,90 +1,109 @@
 # SelectMind AI
 
-AI assistant for any webpage — select text, explain, translate, and continue the chat in place.
+**Turn any webpage into an AI workspace.** Select text, get instant answers, and keep the conversation going — without leaving the page.
 
-## Stack
+SelectMind AI is a Chrome extension (Manifest V3) that puts a floating toolbar on text selection, opens a resizable chat popup, and offers a full side-panel workspace. Connect your own AI provider and work with page context automatically.
 
-- TypeScript, Manifest V3, React, Vite, Tailwind, shadcn/ui
-- Zustand, React Query, Framer Motion, Dexie
-- Vitest, Playwright, ESLint, Prettier
+---
 
-## Development
+## Highlights
+
+- **Select & act** — Highlight text and run Explain, Translate, Summarize, Rewrite, and 30+ built-in actions from a floating toolbar.
+- **Chat in place** — Continue the conversation in the same popup: ask follow-ups, resize the window, drag it anywhere.
+- **Side panel workspace** — Open any thread in a dedicated workspace with conversation history.
+- **Command palette** — Press `Ctrl+Shift+P` to fuzzy-search actions and pipelines from anywhere.
+- **Your providers** — OpenAI, Anthropic, Gemini, Ollama, and any OpenAI-compatible API. Keys are encrypted locally.
+- **Custom workflows** — Create actions, categories, multi-step pipelines, toolbar layouts, and keyboard shortcuts.
+- **Context-aware** — Selected text, page title, and URL are sent to the model; add more selections to context on the fly.
+- **Privacy-first** — Conversations and settings stay in your browser (IndexedDB). Requests go directly to the provider you configure.
+
+---
+
+## How it works
+
+1. **Select text** on any website.
+2. **Click an action** in the floating toolbar (or use `Ctrl+Shift+P`).
+3. **Read the answer** in a popup — stream live, copy, or keep chatting.
+4. **Optional:** open the side panel for a larger workspace and past conversations.
+
+---
+
+## Keyboard shortcuts
+
+| Shortcut | Action |
+|----------|--------|
+| `Ctrl+Shift+P` | Open command palette |
+| `Ctrl+Shift+S` | Toggle side panel |
+| `Enter` | Send message in chat popup |
+| `Shift+Enter` | New line in chat input |
+
+---
+
+## Supported providers
+
+| Provider | Notes |
+|----------|--------|
+| OpenAI | GPT-4o, GPT-4o mini, etc. |
+| Anthropic | Claude 3.5 / 3 |
+| Google Gemini | Gemini 1.5 / 2 |
+| Ollama | Local models |
+| OpenAI-compatible | Any custom base URL |
+
+Configure providers and API keys in **Extension options** after install.
+
+---
+
+## Install (development)
+
+**Requirements:** Node.js 20+, Google Chrome
 
 ```bash
+git clone https://github.com/Dimovitus/selectmind-ai.git
+cd selectmind-ai
 npm install
 node scripts/generate-icons.mjs
+npm run build
+```
+
+1. Open `chrome://extensions`
+2. Enable **Developer mode**
+3. Click **Load unpacked** and select the `dist` folder
+4. Open **SelectMind AI → Settings**, add a provider and API key
+5. Visit any page, select text, and use the toolbar
+
+For hot reload during development:
+
+```bash
 npm run dev
 ```
 
-Load the extension from the `dist` folder in `chrome://extensions` (Developer mode).
+---
 
-## Scripts
+## Settings & data
+
+- **Options page** — Providers, actions, toolbar, pipelines, language, theme, import/export.
+- **Response language** — Auto-detect from selection or choose a fixed language (e.g. Ukrainian, Russian, English).
+- **Backup** — Export/import actions, categories, pipelines, and settings as JSON.
+- **Retention** — Old conversations are cleaned up automatically based on your retention setting.
+
+---
+
+## Development
 
 | Command | Description |
 |---------|-------------|
-| `npm run dev` | Development build with HMR |
-| `npm run build` | Production build |
+| `npm run dev` | Dev build with HMR |
+| `npm run build` | Production build to `dist/` |
 | `npm run test` | Unit tests (Vitest) |
+| `npm run test:e2e` | E2E smoke tests (Playwright) |
 | `npm run lint` | ESLint |
-| `npm run test:e2e` | E2E tests (Playwright, requires `npm run build` first) |
 
-## Architecture
+**Stack:** TypeScript, React, Vite, Tailwind, Zustand, React Query, Dexie, Framer Motion.
 
-```
-UI → Use Cases → Domain → Ports → Adapters
-```
+Architecture follows a hexagonal layout: UI → use cases → domain → ports → adapters.
 
-See the architecture document in project chat for full design.
+---
 
-## Current Phase
+## Chrome Web Store
 
-**Phase 0 — Foundation** ✅
-
-**Phase 1 — Core Loop** ✅
-
-- AI Router with provider registry
-- Providers: OpenAI, Anthropic, Gemini, Ollama
-- SSE streaming pipeline (background → content script / side panel)
-- Quick Action popup with live markdown rendering
-- Provider management in Options (API key, test connection)
-- Encrypted API key storage (Web Crypto AES-GCM)
-
-**Phase 2 — Chat & Workspace** ✅
-
-- Shared ChatView component (Side Panel + Content Script)
-- ContextChips: selection, page title, custom fragments
-- «Add current selection» via context:get relay
-- ChatPopup for chat-mode actions
-- Conversation list in Workspace
-- conversation:promote (quick → chat)
-- Paginated message history + load more
-- Auto-scroll to latest message
-
-**Phase 3 — Actions & Settings** ✅
-
-- Action Editor (create / edit / delete custom actions)
-- 30 built-in actions across 7 categories
-- Custom categories CRUD
-- Toolbar customizer (reorder, add/remove, preview)
-- General settings (default provider/model, theme, behavior)
-- Tabbed Options page
-- Template variable picker in action editor
-
-**Phase 4 — Power Features** ✅
-
-- Command Palette (Ctrl+Shift+P) with fuzzy search
-- Per-action hotkeys (content script keydown)
-- Pipeline engine (sequential multi-step AI)
-- Built-in pipelines: Language Learning, Code Review
-- Import/Export JSON backup
-- Pipelines & Backup tabs in Settings
-
-**Phase 5 — Polish & Launch** ✅
-
-- Markdown: syntax highlighting (highlight.js), code copy buttons, KaTeX math
-- Error UX with actionable hints (missing key, rate limit, auth)
-- Onboarding wizard on first install (provider setup)
-- Light/dark/system theme support
-- Conversation retention cleanup (daily alarm)
-- Playwright E2E smoke tests
-- Chrome Web Store listing guide (`docs/STORE.md`)
+Store listing copy and packaging notes: [`docs/STORE.md`](docs/STORE.md)
