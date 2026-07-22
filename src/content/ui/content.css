@@ -1,0 +1,609 @@
+:host, #saywa-app {
+  all: initial;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #e4e4e7;
+}
+
+.saywa-toolbar {
+  pointer-events: auto;
+}
+
+.saywa-toolbar-inner {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  background: rgba(24, 24, 27, 0.95);
+  border: 1px solid rgba(63, 63, 70, 0.8);
+  border-radius: 10px;
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(12px);
+}
+
+.saywa-toolbar-btn {
+  all: unset;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.saywa-toolbar-btn:hover:not(:disabled) {
+  background: rgba(63, 63, 70, 0.8);
+}
+
+.saywa-toolbar-btn:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+
+.saywa-toolbar-icon {
+  font-size: 16px;
+  line-height: 1;
+}
+
+.saywa-toolbar-more .saywa-toolbar-icon {
+  font-size: 18px;
+  color: #a1a1aa;
+}
+
+.saywa-toolbar-sep {
+  width: 1px;
+  height: 20px;
+  margin: 0 2px;
+  background: rgba(63, 63, 70, 0.8);
+}
+
+.saywa-toolbar-close .saywa-toolbar-icon {
+  font-size: 18px;
+  color: #a1a1aa;
+}
+
+.saywa-toolbar-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  color: #a1a1aa;
+  font-size: 18px;
+  animation: saywa-pulse 1.2s ease-in-out infinite;
+}
+
+.saywa-toolbar-error {
+  margin: 6px 0 0;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: rgba(239, 68, 68, 0.15);
+  color: #fca5a5;
+  font-size: 11px;
+  line-height: 1.3;
+  max-width: 320px;
+}
+
+/* Quick Action Popup */
+.saywa-popup {
+  pointer-events: auto;
+  width: min(420px, calc(100vw - 32px));
+  background: rgba(24, 24, 27, 0.97);
+  border: 1px solid rgba(63, 63, 70, 0.8);
+  border-radius: 12px;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(16px);
+  overflow: hidden;
+}
+
+.saywa-popup-chat {
+  display: flex;
+  flex-direction: column;
+  width: 420px;
+  height: 480px;
+  min-width: 300px;
+  min-height: 260px;
+  max-width: calc(100vw - 24px);
+  max-height: calc(100vh - 24px);
+  resize: both;
+  font-size: calc(13px * var(--saywa-popup-scale, 1));
+}
+
+.saywa-popup-chat::after {
+  content: '';
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  width: 10px;
+  height: 10px;
+  border-right: 2px solid rgba(161, 161, 170, 0.5);
+  border-bottom: 2px solid rgba(161, 161, 170, 0.5);
+  pointer-events: none;
+}
+
+.saywa-popup-drag-handle {
+  cursor: grab;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.saywa-popup-dragging .saywa-popup-drag-handle,
+.saywa-popup-dragging.saywa-popup-drag-handle {
+  cursor: grabbing;
+}
+
+.saywa-popup-chat .saywa-popup-header {
+  flex-shrink: 0;
+}
+
+.saywa-popup-chat .saywa-popup-chat-body,
+.saywa-popup-chat .sw-chat,
+.saywa-popup-chat .sw-message-content,
+.saywa-popup-chat .sw-input,
+.saywa-popup-chat .sw-context-chip,
+.saywa-popup-chat .sw-message-role {
+  font-size: inherit;
+}
+
+.saywa-popup-expand {
+  all: unset;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  cursor: pointer;
+  color: #a1a1aa;
+  font-size: 16px;
+}
+
+.saywa-popup-expand:hover {
+  background: rgba(63, 63, 70, 0.8);
+  color: #fafafa;
+}
+
+.saywa-popup-chat-body {
+  flex: 1;
+  min-height: 0;
+  max-height: none;
+  padding: 0 12px 12px;
+  display: flex;
+  flex-direction: column;
+}
+
+.saywa-popup-chat-body .sw-chat {
+  height: 100%;
+}
+
+.saywa-popup-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(63, 63, 70, 0.6);
+}
+
+.saywa-popup-icon {
+  font-size: 16px;
+}
+
+.saywa-popup-title {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fafafa;
+}
+
+.saywa-popup-close {
+  all: unset;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  cursor: pointer;
+  color: #a1a1aa;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.saywa-popup-close:hover {
+  background: rgba(63, 63, 70, 0.8);
+  color: #fafafa;
+}
+
+.saywa-popup-body {
+  padding: 12px;
+  max-height: 360px;
+  overflow-y: auto;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #d4d4d8;
+}
+
+.saywa-popup-error {
+  color: #f87171;
+  margin: 0;
+}
+
+.saywa-popup-footer {
+  display: flex;
+  gap: 8px;
+  padding: 8px 12px;
+  border-top: 1px solid rgba(63, 63, 70, 0.6);
+  justify-content: flex-end;
+}
+
+.saywa-popup-btn {
+  all: unset;
+  padding: 6px 12px;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  color: #a1a1aa;
+  border: 1px solid rgba(63, 63, 70, 0.8);
+  transition: background 0.15s ease;
+}
+
+.saywa-popup-btn:hover:not(:disabled) {
+  background: rgba(63, 63, 70, 0.6);
+  color: #fafafa;
+}
+
+.saywa-popup-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.saywa-popup-btn-primary {
+  background: rgba(139, 92, 246, 0.2);
+  border-color: rgba(139, 92, 246, 0.4);
+  color: #c4b5fd;
+}
+
+.saywa-popup-btn-primary:hover {
+  background: rgba(139, 92, 246, 0.35);
+  color: #ede9fe;
+}
+
+.saywa-popup-loading {
+  display: flex;
+  gap: 4px;
+  padding: 8px 0;
+}
+
+.saywa-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #8b5cf6;
+  animation: saywa-pulse 1.2s ease-in-out infinite;
+}
+
+.saywa-dot:nth-child(2) { animation-delay: 0.2s; }
+.saywa-dot:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes saywa-pulse {
+  0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
+  40% { opacity: 1; transform: scale(1); }
+}
+
+/* Markdown in popup */
+.saywa-markdown p { margin: 0 0 8px; }
+.saywa-markdown p:last-child { margin-bottom: 0; }
+.saywa-markdown ul, .saywa-markdown ol { margin: 0 0 8px; padding-left: 20px; }
+.saywa-markdown li { margin-bottom: 4px; }
+.saywa-markdown code {
+  background: rgba(63, 63, 70, 0.6);
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', Consolas, monospace;
+  font-size: 12px;
+}
+.saywa-markdown pre {
+  background: rgba(9, 9, 11, 0.8);
+  border: 1px solid rgba(63, 63, 70, 0.6);
+  border-radius: 8px;
+  padding: 10px;
+  overflow-x: auto;
+  margin: 8px 0;
+}
+.saywa-markdown pre code {
+  background: none;
+  padding: 0;
+  font-size: 12px;
+}
+.saywa-markdown strong { color: #fafafa; font-weight: 600; }
+.saywa-markdown h1, .saywa-markdown h2, .saywa-markdown h3 {
+  color: #fafafa;
+  margin: 12px 0 6px;
+  font-weight: 600;
+}
+.saywa-markdown h1 { font-size: 16px; }
+.saywa-markdown h2 { font-size: 14px; }
+.saywa-markdown h3 { font-size: 13px; }
+.saywa-markdown blockquote {
+  border-left: 3px solid #8b5cf6;
+  margin: 8px 0;
+  padding-left: 12px;
+  color: #a1a1aa;
+}
+.saywa-markdown table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 8px 0;
+  font-size: 12px;
+}
+.saywa-markdown th, .saywa-markdown td {
+  border: 1px solid rgba(63, 63, 70, 0.6);
+  padding: 4px 8px;
+  text-align: left;
+}
+.saywa-markdown th { background: rgba(63, 63, 70, 0.4); color: #fafafa; }
+
+/* Chat Popup */
+.saywa-chat-popup {
+  pointer-events: auto;
+  width: 440px;
+  height: 480px;
+  min-width: 320px;
+  min-height: 280px;
+  max-width: calc(100vw - 24px);
+  max-height: calc(100vh - 24px);
+  resize: both;
+  font-size: calc(13px * var(--saywa-popup-scale, 1));
+  background: rgba(24, 24, 27, 0.97);
+  border: 1px solid rgba(63, 63, 70, 0.8);
+  border-radius: 12px;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(16px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.saywa-chat-popup::after {
+  content: '';
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  width: 10px;
+  height: 10px;
+  border-right: 2px solid rgba(161, 161, 170, 0.5);
+  border-bottom: 2px solid rgba(161, 161, 170, 0.5);
+  pointer-events: none;
+}
+
+.saywa-chat-popup .saywa-chat-popup-header {
+  flex-shrink: 0;
+}
+
+.saywa-chat-popup .sw-chat,
+.saywa-chat-popup .sw-message-content,
+.saywa-chat-popup .sw-input,
+.saywa-chat-popup .sw-context-chip,
+.saywa-chat-popup .sw-message-role {
+  font-size: inherit;
+}
+
+.saywa-chat-popup-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(63, 63, 70, 0.6);
+  flex-shrink: 0;
+}
+
+.saywa-chat-popup-title {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fafafa;
+}
+
+.saywa-chat-popup-expand,
+.saywa-chat-popup-close {
+  all: unset;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  cursor: pointer;
+  color: #a1a1aa;
+  font-size: 16px;
+}
+
+.saywa-chat-popup-expand:hover,
+.saywa-chat-popup-close:hover {
+  background: rgba(63, 63, 70, 0.8);
+  color: #fafafa;
+}
+
+.saywa-chat-popup-body {
+  flex: 1;
+  overflow: hidden;
+  padding: 0 12px 12px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.saywa-chat-popup-body .sw-chat {
+  height: 100%;
+}
+
+/* Command Palette */
+.saywa-palette-overlay {
+  pointer-events: auto;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 2147483647;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 15vh;
+}
+
+.saywa-palette {
+  width: min(520px, calc(100vw - 32px));
+  background: rgba(24, 24, 27, 0.98);
+  border: 1px solid rgba(63, 63, 70, 0.8);
+  border-radius: 12px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+}
+
+.saywa-palette-input {
+  width: 100%;
+  border: none;
+  border-bottom: 1px solid rgba(63, 63, 70, 0.6);
+  background: transparent;
+  color: #fafafa;
+  padding: 14px 16px;
+  font-size: 15px;
+  outline: none;
+  font-family: inherit;
+}
+
+.saywa-palette-list {
+  max-height: 320px;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.saywa-palette-empty {
+  padding: 24px;
+  text-align: center;
+  color: #71717a;
+  font-size: 13px;
+}
+
+.saywa-palette-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  color: #e4e4e7;
+}
+
+.saywa-palette-item[data-selected='true'] {
+  background: rgba(139, 92, 246, 0.2);
+}
+
+.saywa-palette-item-icon {
+  font-size: 18px;
+  width: 24px;
+  text-align: center;
+}
+
+.saywa-palette-item-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.saywa-palette-item-name {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.saywa-palette-item-sub {
+  display: block;
+  font-size: 11px;
+  color: #71717a;
+}
+
+.saywa-palette-item-type {
+  font-size: 10px;
+  text-transform: uppercase;
+  color: #52525b;
+  letter-spacing: 0.05em;
+}
+
+.saywa-palette-footer {
+  display: flex;
+  gap: 16px;
+  padding: 8px 16px;
+  border-top: 1px solid rgba(63, 63, 70, 0.6);
+  font-size: 11px;
+  color: #52525b;
+}
+
+/* Error display (content script) */
+.sw-error {
+  display: flex;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  background: rgba(239, 68, 68, 0.08);
+  font-size: 13px;
+}
+.sw-error-compact { padding: 8px; font-size: 12px; }
+.sw-error-title { font-weight: 600; color: #fca5a5; margin: 0; }
+.sw-error-hint { color: #a1a1aa; margin: 4px 0 0; }
+.sw-error-action {
+  margin-top: 8px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: none;
+  background: #7c3aed;
+  color: white;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+/* Code blocks in markdown */
+.sw-code-block {
+  margin: 8px 0;
+  border-radius: 8px;
+  border: 1px solid rgba(63, 63, 70, 0.6);
+  overflow: hidden;
+}
+.sw-code-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 10px;
+  background: rgba(39, 39, 42, 0.8);
+  font-size: 11px;
+}
+.sw-code-lang { color: #71717a; text-transform: uppercase; font-family: monospace; }
+.sw-code-copy {
+  all: unset;
+  cursor: pointer;
+  color: #a1a1aa;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.sw-code-copy:hover { background: rgba(63, 63, 70, 0.6); color: #e4e4e7; }
+.sw-code-block pre {
+  margin: 0;
+  padding: 10px;
+  overflow-x: auto;
+  background: #09090b;
+}
+.sw-code-block pre code { background: transparent; padding: 0; font-size: 12px; }
+.hljs { color: #e4e4e7; }
+.hljs-keyword { color: #c084fc; }
+.hljs-string { color: #86efac; }
+.hljs-number { color: #fdba74; }
+.hljs-comment { color: #71717a; }

@@ -1,0 +1,108 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 240 10% 6%;
+    --card-foreground: 0 0% 98%;
+    --popover: 240 10% 6%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 262 83% 58%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 240 4% 16%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 240 4% 16%;
+    --muted-foreground: 240 5% 64.9%;
+    --accent: 240 4% 16%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 50%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 4% 16%;
+    --input: 240 4% 16%;
+    --ring: 262 83% 58%;
+    --radius: 0.625rem;
+  }
+
+  :root.light {
+    --background: 0 0% 100%;
+    --foreground: 240 10% 3.9%;
+    --card: 0 0% 98%;
+    --card-foreground: 240 10% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 3.9%;
+    --primary: 262 83% 58%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 240 4.8% 95.9%;
+    --secondary-foreground: 240 5.9% 10%;
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
+    --accent: 240 4.8% 95.9%;
+    --accent-foreground: 240 5.9% 10%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
+    --ring: 262 83% 58%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+
+  /* Markdown in side panel */
+  .saywa-markdown p { @apply mb-2 last:mb-0; }
+  .saywa-markdown ul, .saywa-markdown ol { @apply mb-2 pl-5; }
+  .saywa-markdown code {
+    @apply rounded bg-muted px-1 py-0.5 text-xs font-mono;
+  }
+  .saywa-markdown pre {
+    @apply my-2 overflow-x-auto rounded-lg border bg-zinc-950 p-3;
+  }
+  .saywa-markdown pre code { @apply bg-transparent p-0; }
+  .saywa-markdown strong { @apply font-semibold text-foreground; }
+  .saywa-markdown h1, .saywa-markdown h2, .saywa-markdown h3 {
+    @apply mb-1 mt-3 font-semibold text-foreground;
+  }
+  .saywa-markdown table { @apply my-2 w-full border-collapse text-sm; }
+  .saywa-markdown th, .saywa-markdown td { @apply border border-border px-2 py-1; }
+  .saywa-markdown th { @apply bg-muted font-medium; }
+
+  .sw-code-block {
+    @apply my-2 overflow-hidden rounded-lg border;
+  }
+  .sw-code-header {
+    @apply flex items-center justify-between border-b bg-muted px-3 py-1.5 text-xs;
+  }
+  .sw-code-lang { @apply font-mono text-muted-foreground uppercase; }
+  .sw-code-copy {
+    @apply cursor-pointer rounded px-2 py-0.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground;
+  }
+  .sw-code-block pre { @apply my-0 overflow-x-auto p-3; }
+  .sw-code-block pre code { @apply bg-transparent p-0 text-xs; }
+
+  .hljs { color: #e4e4e7; background: #09090b; }
+  .hljs-keyword, .hljs-selector-tag { color: #c084fc; }
+  .hljs-string, .hljs-attr { color: #86efac; }
+  .hljs-number, .hljs-literal { color: #fdba74; }
+  .hljs-comment { color: #71717a; }
+  .hljs-title, .hljs-name { color: #93c5fd; }
+
+  .sw-error {
+    @apply flex gap-3 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm;
+  }
+  .sw-error-compact { @apply p-2 text-xs; }
+  .sw-error-icon { @apply shrink-0 text-base; }
+  .sw-error-title { @apply font-medium text-foreground; }
+  .sw-error-hint { @apply mt-0.5 text-muted-foreground; }
+  .sw-error-action {
+    @apply mt-2 rounded-md bg-primary px-3 py-1 text-xs font-medium text-primary-foreground;
+  }
+}
