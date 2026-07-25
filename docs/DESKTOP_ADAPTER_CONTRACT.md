@@ -260,7 +260,7 @@ npm test
 - [x] Gaming disclaimer + [DESKTOP_CAPTURE.md](./DESKTOP_CAPTURE.md)
 - [x] General settings UI (desktop)
 
-## Phase 5 checklist 🟡
+## Phase 5 / 5.1 checklist ✅
 
 - [x] Actions library + custom action editor
 - [x] Command palette (`Ctrl+Shift+P`)
@@ -269,8 +269,17 @@ npm test
 - [x] Onboarding wizard (desktop variant)
 - [x] Provider API keys → Windows Credential Manager (`keyring` + `windows-native`)
 - [x] Tauri ACL permissions for app IPC commands
-- [ ] **Global floating toolbar** — see [DESKTOP_TOOLBAR.md](./DESKTOP_TOOLBAR.md)
-- [ ] **Floating chat popup** (ChatView overlay, drag/resize/expand)
-- [ ] Toolbar customizer in Settings
+- [x] Global floating toolbar (UIA + Win32 fallback) — [DESKTOP_TOOLBAR.md](./DESKTOP_TOOLBAR.md)
+- [x] Floating chat popup (ChatView overlay, drag/resize/expand)
+- [x] Toolbar customizer in Settings
+- [x] OCR toolbar + OCR chat hotkeys
+- [x] Custom global hotkeys in Settings
+
+## Phase 6 checklist 🟡
+
+- [x] NSIS packaging (`npm run desktop:package`)
+- [x] Smoke test checklist — [DESKTOP_RELEASE.md](./DESKTOP_RELEASE.md)
+- [ ] Code signing (OV/EV certificate)
+- [ ] Tauri auto-updater
 
 See [DESKTOP_PORTING_PLAN.md](./DESKTOP_PORTING_PLAN.md) for full roadmap.
