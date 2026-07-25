@@ -4,6 +4,7 @@ import type { Action } from '@/domain/action/action.schema';
 import type { ActionId, ConversationId } from '@/domain/shared/ids';
 import type { PageContext } from '@/shared/types/page-context';
 import { getDefaultToolbarActions } from '@/shared/constants/default-actions';
+import { FREE_CHAT_ACTION } from '@/shared/constants/free-chat';
 import { LOG_PREFIX } from '@/shared/constants/brand';
 import { rpcClient, type RpcCallOptions } from '@/infrastructure/messaging/rpc-client';
 import { rememberPageSelection } from '@/content/page-context-extractor';
@@ -16,6 +17,7 @@ interface FloatingToolbarProps {
   rect: SelectionRect;
   onClose: () => void;
   onActionResult: (action: Action, conversationId: ConversationId, rect: SelectionRect) => void;
+  onOpenFreeChat: (context: PageContext, rect: SelectionRect) => void;
 }
 
 const TOOLBAR_RPC: RpcCallOptions = {
@@ -30,7 +32,7 @@ async function loadToolbarActions(): Promise<Action[]> {
 
   const all = await rpcClient.call('action:list', undefined, TOOLBAR_RPC);
   const enabled = all.filter((a) => a.isEnabled).sort((a, b) => a.order - b.order);
-  if (enabled.length > 0) return enabled.slice(0, 7);
+  if (enabled.length > 0) return enabled;
 
   throw new Error('No actions available');
 }
@@ -49,7 +51,13 @@ function getLoadErrorMessage(error: unknown): string {
   return 'Could not sync toolbar actions. Built-in actions still work.';
 }
 
-export function FloatingToolbar({ context, rect, onClose, onActionResult }: FloatingToolbarProps) {
+export function FloatingToolbar({
+  context,
+  rect,
+  onClose,
+  onActionResult,
+  onOpenFreeChat,
+}: FloatingToolbarProps) {
   const ref = useRef<HTMLDivElement>(null);
   const [actions, setActions] = useState<Action[]>(() => getDefaultToolbarActions());
   const [syncError, setSyncError] = useState<string | null>(null);
@@ -142,6 +150,23 @@ export function FloatingToolbar({ context, rect, onClose, onActionResult }: Floa
         onMouseDown={(e) => e.stopPropagation()}
       >
         <div className="saywa-toolbar-inner">
+          <button
+            type="button"
+            className="saywa-toolbar-btn saywa-toolbar-free-chat"
+            title={FREE_CHAT_ACTION.name}
+            disabled={!!runningId}
+            onMouseDown={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              rememberPageSelection(context.selection);
+              onOpenFreeChat(context, getSelectionRect() ?? rect);
+            }}
+          >
+            <span className="saywa-toolbar-icon">{FREE_CHAT_ACTION.icon}</span>
+          </button>
+
+          <span className="saywa-toolbar-sep" />
+
           {actions.map((action) => (
             <button
               key={action.id}

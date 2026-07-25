@@ -1,0 +1,24 @@
+[[permission]]
+identifier = "allow-app-commands"
+description = "Allow SelectMind desktop IPC commands (capture, OCR, secrets, startup)."
+commands.allow = [
+  "capture_screen_surface",
+  "capture_screen_region",
+  "get_monitor_info",
+  "get_monitor_at_point",
+  "get_app_version",
+  "should_start_minimized",
+  "ocr_is_available",
+  "ocr_recognize_data_url",
+  "secret_store_api_key",
+  "secret_get_api_key",
+  "secret_delete_api_key",
+  "secret_has_api_key",
+  "selection_get_snapshot",
+  "selection_set_monitor_enabled",
+  "selection_foreground_window_id",
+  "selection_show_toolbar",
+  "selection_trigger_manual_toolbar",
+  "app_exit",
+  "tray_is_ready",
+]

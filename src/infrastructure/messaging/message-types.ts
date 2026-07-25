@@ -22,6 +22,10 @@ export interface RpcRequestMap {
     payload: { actionId: ActionId; context: PageContext };
     response: { conversationId: ConversationId };
   };
+  'action:execute-in-conversation': {
+    payload: { actionId: ActionId; context: PageContext; conversationId: ConversationId };
+    response: { conversationId: ConversationId };
+  };
   'pipeline:list': { payload: undefined; response: Pipeline[] };
   'pipeline:run': {
     payload: { pipelineId: PipelineId; context: PageContext };
@@ -49,6 +53,7 @@ export interface RpcRequestMap {
     response: Conversation[];
   };
   'conversation:clear-all': { payload: undefined; response: { deleted: number } };
+  'conversation:delete': { payload: { conversationId: ConversationId }; response: void };
   'conversation:promote': {
     payload: { conversationId: ConversationId; mode: ConversationMode };
     response: Conversation;
@@ -61,6 +66,10 @@ export interface RpcRequestMap {
     payload: { conversationId: ConversationId; fragment: ContextFragment };
     response: void;
   };
+  'secrets:has-key': {
+    payload: { providerId: ProviderId };
+    response: { hasKey: boolean };
+  };
   'context:get': { payload: undefined; response: PageContext };
   'provider:list': { payload: undefined; response: ProviderConfig[] };
   'provider:save': {
@@ -68,7 +77,10 @@ export interface RpcRequestMap {
     response: ProviderConfig;
   };
   'provider:delete': { payload: { providerId: ProviderId }; response: void };
-  'provider:models': { payload: { providerId: ProviderId }; response: ModelInfo[] };
+  'provider:models': {
+    payload: { providerId: ProviderId; apiKey?: string };
+    response: ModelInfo[];
+  };
   'settings:get': { payload: undefined; response: Settings };
   'settings:update': { payload: Partial<Settings>; response: Settings };
   'ping': { payload: undefined; response: { pong: true; timestamp: number } };

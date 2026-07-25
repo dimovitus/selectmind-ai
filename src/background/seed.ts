@@ -1,8 +1,9 @@
 import { getContainer } from '@/di/container';
+import type { ActionId } from '@/domain/shared/ids';
 import { DEFAULT_PROVIDERS } from '@/shared/constants/default-providers';
-import { DEFAULT_ACTIONS, DEFAULT_CATEGORIES, DEFAULT_TOOLBAR_ACTION_IDS } from '@/shared/constants/default-actions';
+import { DEFAULT_ACTIONS, DEFAULT_CATEGORIES, DEFAULT_TOOLBAR_ACTION_IDS, TOOLBAR_ACTIONS_MERGE_ON_UPDATE } from '@/shared/constants/default-actions';
 import { DEFAULT_PIPELINES } from '@/shared/constants/default-pipelines';
-import { providerRegistry } from '@/infrastructure/ai/provider-registry';
+import { providerRegistry } from '@selectmind/core';
 import { loadAllApiKeys } from '@/infrastructure/crypto/api-key-store';
 
 let seedPromise: Promise<void> | null = null;
@@ -42,6 +43,12 @@ export async function seedDatabase(): Promise<void> {
   const existingProviders = await providerRepo.getAll();
   if (existingProviders.length === 0) {
     await Promise.all(DEFAULT_PROVIDERS.map((p) => providerRepo.save(p)));
+  } else {
+    const existingIds = new Set(existingProviders.map((p) => p.id));
+    const newProviders = DEFAULT_PROVIDERS.filter((p) => !existingIds.has(p.id));
+    if (newProviders.length > 0) {
+      await Promise.all(newProviders.map((p) => providerRepo.save(p)));
+    }
   }
 
   const existingPipelines = await pipelineRepo.getAll();
@@ -56,6 +63,34 @@ export async function seedDatabase(): Promise<void> {
   }
 
   await reloadProviderRegistry();
+  await mergeToolbarActionIds();
+}
+
+async function mergeToolbarActionIds(): Promise<void> {
+  const { settingsRepo } = getContainer();
+  const settings = await settingsRepo.get();
+
+  if (settings.toolbarActionIds.length === 0) {
+    await settingsRepo.update({ toolbarActionIds: DEFAULT_TOOLBAR_ACTION_IDS });
+    return;
+  }
+
+  const missing = TOOLBAR_ACTIONS_MERGE_ON_UPDATE.filter(
+    (id) => !settings.toolbarActionIds.includes(id),
+  );
+  if (missing.length === 0) return;
+
+  const translateIndex = settings.toolbarActionIds.indexOf('act_translate' as ActionId);
+  if (translateIndex >= 0) {
+    const next = [...settings.toolbarActionIds];
+    next.splice(translateIndex + 1, 0, ...missing);
+    await settingsRepo.update({ toolbarActionIds: next });
+    return;
+  }
+
+  await settingsRepo.update({
+    toolbarActionIds: [...settings.toolbarActionIds, ...missing],
+  });
 }
 
 export async function reloadProviderRegistry(): Promise<void> {

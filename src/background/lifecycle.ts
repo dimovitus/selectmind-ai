@@ -50,6 +50,16 @@ export function setupLifecycle(): void {
           }
         });
         break;
+      case 'capture-screen':
+        void chrome.tabs.query({ active: true, currentWindow: true }).then(([tab]) => {
+          if (tab?.id) {
+            void chrome.tabs.sendMessage(tab.id, {
+              type: 'saywa:capture-screen',
+              target: 'sidebar',
+            });
+          }
+        });
+        break;
     }
   });
 }

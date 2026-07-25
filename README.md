@@ -44,10 +44,20 @@ SelectMind AI is a Chrome extension (Manifest V3) that puts a floating toolbar o
 | Provider | Notes |
 |----------|--------|
 | OpenAI | GPT-4o, GPT-4o mini, etc. |
-| Anthropic | Claude 3.5 / 3 |
+| Anthropic | Claude 3.5 / 4 |
 | Google Gemini | Gemini 1.5 / 2 |
+| Groq | Fast Llama / Mixtral inference |
+| Mistral AI | Mistral models |
+| DeepSeek | DeepSeek Chat / Reasoner |
+| xAI (Grok) | Grok models |
+| OpenRouter | 100+ models via one API key |
+| Together AI | Open-source model hosting |
+| Perplexity | Sonar search models |
+| Fireworks AI | Fast open-weight models |
 | Ollama | Local models |
-| OpenAI-compatible | Any custom base URL |
+| LM Studio | Local server (OpenAI-compatible) |
+| LocalAI | Self-hosted OpenAI-compatible API |
+| Custom | Any OpenAI-compatible base URL |
 
 Configure providers and API keys in **Extension options** after install.
 
@@ -101,6 +111,26 @@ npm run dev
 **Stack:** TypeScript, React, Vite, Tailwind, Zustand, React Query, Dexie, Framer Motion.
 
 Architecture follows a hexagonal layout: UI → use cases → domain → ports → adapters.
+
+---
+
+## Desktop app (Windows)
+
+Tauri 2 shell in `apps/desktop/` — same AI core as the extension.
+
+```bash
+npm run desktop:dev      # dev with hot reload
+npm run desktop:package  # NSIS installer (Phase 6)
+```
+
+| Default hotkey | Action |
+|----------------|--------|
+| `Ctrl+Shift+Space` | Toolbar for selected text |
+| `Ctrl+Shift+O` | OCR toolbar (games, images) |
+| `Ctrl+Shift+X` | OCR → chat |
+| `Ctrl+Shift+P` | Command palette |
+
+Roadmap & smoke test: [`docs/DESKTOP_PORTING_PLAN.md`](docs/DESKTOP_PORTING_PLAN.md) · [`docs/DESKTOP_RELEASE.md`](docs/DESKTOP_RELEASE.md)
 
 ---
 

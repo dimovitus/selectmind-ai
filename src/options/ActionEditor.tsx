@@ -7,12 +7,19 @@ import { createActionId, now } from '@/domain/shared/ids';
 import { rpcClient } from '@/infrastructure/messaging/rpc-client';
 import { Button } from '@/presentation/components/ui/button';
 import { TEMPLATE_VARIABLES, OUTPUT_MODES } from '@/shared/constants/template-variables';
+import {
+  CUSTOM_ACTION_TEMPLATES,
+  type CustomActionTemplate,
+} from '@/shared/constants/custom-action-templates';
 
 interface ActionEditorProps {
   action?: Action | null;
+  duplicateFrom?: Action | null;
+  template?: CustomActionTemplate | null;
   categories: Category[];
   providers: ProviderConfig[];
   onClose: () => void;
+  onSaved?: (action: Action) => void;
 }
 
 const EMPTY_FORM = {
@@ -29,36 +36,93 @@ const EMPTY_FORM = {
   hotkey: '',
 };
 
-export function ActionEditor({ action, categories, providers, onClose }: ActionEditorProps) {
+function formFromAction(action: Action, asDuplicate: boolean) {
+  return {
+    name: asDuplicate ? `${action.name} (custom)` : action.name,
+    icon: action.icon,
+    categoryId: action.categoryId,
+    prompt: action.prompt,
+    providerId: action.providerId ?? '',
+    model: action.model ?? '',
+    temperature: action.temperature,
+    streaming: action.streaming,
+    outputMode: action.outputMode,
+    isEnabled: action.isEnabled,
+    hotkey: asDuplicate ? '' : (action.hotkey ?? ''),
+  };
+}
+
+function formFromTemplate(template: CustomActionTemplate) {
+  return {
+    name: template.name,
+    icon: template.icon,
+    categoryId: '',
+    prompt: template.prompt,
+    providerId: '',
+    model: '',
+    temperature: 0.7,
+    streaming: true,
+    outputMode: template.outputMode,
+    isEnabled: true,
+    hotkey: '',
+  };
+}
+
+export function ActionEditor({
+  action,
+  duplicateFrom,
+  template,
+  categories,
+  providers,
+  onClose,
+  onSaved,
+}: ActionEditorProps) {
   const [form, setForm] = useState(EMPTY_FORM);
+  const [selectedTemplateId, setSelectedTemplateId] = useState('blank');
   const queryClient = useQueryClient();
-  const isEditing = !!action;
+  const isEditing = !!action && !duplicateFrom;
+  const isDuplicate = !!duplicateFrom;
 
   useEffect(() => {
-    if (action) {
-      setForm({
-        name: action.name,
-        icon: action.icon,
-        categoryId: action.categoryId,
-        prompt: action.prompt,
-        providerId: action.providerId ?? '',
-        model: action.model ?? '',
-        temperature: action.temperature,
-        streaming: action.streaming,
-        outputMode: action.outputMode,
-        isEnabled: action.isEnabled,
-        hotkey: action.hotkey ?? '',
-      });
-    } else if (categories[0]) {
+    if (action && !duplicateFrom) {
+      setForm(formFromAction(action, false));
+      return;
+    }
+    if (duplicateFrom) {
+      setForm(formFromAction(duplicateFrom, true));
+      return;
+    }
+    if (template) {
+      setForm(formFromTemplate(template));
+      setSelectedTemplateId(template.id);
+      return;
+    }
+    setForm(EMPTY_FORM);
+    setSelectedTemplateId('blank');
+    if (categories[0]) {
       setForm((f) => ({ ...f, categoryId: categories[0]!.id }));
     }
-  }, [action, categories]);
+  }, [action, duplicateFrom, template, categories]);
+
+  useEffect(() => {
+    if (isEditing || isDuplicate || template) return;
+    const picked = CUSTOM_ACTION_TEMPLATES.find((t) => t.id === selectedTemplateId);
+    if (!picked) return;
+    setForm((f) => ({
+      ...f,
+      name: picked.id === 'blank' ? f.name : picked.name,
+      icon: picked.icon,
+      prompt: picked.prompt,
+      outputMode: picked.outputMode,
+      categoryId: f.categoryId || categories[0]?.id || '',
+    }));
+  }, [selectedTemplateId, isEditing, isDuplicate, template, categories]);
 
   const saveMutation = useMutation({
     mutationFn: async () => {
       const timestamp = now();
       const toSave: Action = {
-        id: action?.id ?? createActionId(),
+        id: action?.id && !duplicateFrom ? action.id : createActionId(),
         name: form.name.trim(),
         icon: form.icon.trim() || '⚡',
         categoryId: form.categoryId as Action['categoryId'],
@@ -68,24 +132,25 @@ export function ActionEditor({ action, categories, providers, onClose }: ActionE
         temperature: form.temperature,
         streaming: form.streaming,
         outputMode: form.outputMode,
-        isBuiltIn: action?.isBuiltIn ?? false,
+        isBuiltIn: action?.isBuiltIn && !duplicateFrom ? true : false,
         isEnabled: form.isEnabled,
-        order: action?.order ?? 999,
+        order: action?.order && !duplicateFrom ? action.order : 999,
         hotkey: form.hotkey.trim() || undefined,
-        createdAt: action?.createdAt ?? timestamp,
+        createdAt: action?.createdAt && !duplicateFrom ? action.createdAt : timestamp,
         updatedAt: timestamp,
       };
       return rpcClient.call('action:save', { action: toSave });
     },
-    onSuccess: () => {
+    onSuccess: (saved) => {
       void queryClient.invalidateQueries({ queryKey: ['actions'] });
+      onSaved?.(saved);
       onClose();
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: async () => {
-      if (!action) return;
+      if (!action || action.isBuiltIn) return;
       return rpcClient.call('action:delete', { actionId: action.id });
     },
     onSuccess: () => {
@@ -98,10 +163,47 @@ export function ActionEditor({ action, categories, providers, onClose }: ActionE
     setForm((f) => ({ ...f, prompt: `${f.prompt}{{${varName}}}` }));
   };
 
+  const title = isEditing
+    ? action?.isBuiltIn
+      ? 'Edit Built-in Action'
+      : 'Edit Custom Action'
+    : isDuplicate
+      ? 'Duplicate as Custom Action'
+      : 'New Custom Action';
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
       <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-xl border bg-card p-6 shadow-xl">
-        <h2 className="text-lg font-semibold">{isEditing ? 'Edit Action' : 'New Action'}</h2>
+        <h2 className="text-lg font-semibold">{title}</h2>
+        {!isEditing && !isDuplicate && !template && (
+          <p className="mt-1 text-sm text-muted-foreground">
+            Pick a starter template or write your own prompt. Use {'{{selection}}'} for highlighted text.
+          </p>
+        )}
+
+        {!isEditing && !isDuplicate && !template && (
+          <div className="mt-4">
+            <label className="text-xs text-muted-foreground">Starter template</label>
+            <div className="mt-2 grid gap-2 sm:grid-cols-2">
+              {CUSTOM_ACTION_TEMPLATES.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  className={`rounded-md border px-3 py-2 text-left text-sm transition-colors ${
+                    selectedTemplateId === item.id
+                      ? 'border-primary bg-primary/10'
+                      : 'hover:bg-accent'
+                  }`}
+                  onClick={() => setSelectedTemplateId(item.id)}
+                >
+                  <span className="mr-2">{item.icon}</span>
+                  <span className="font-medium">{item.name}</span>
+                  <span className="mt-0.5 block text-xs text-muted-foreground">{item.description}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="mt-4 grid grid-cols-2 gap-4">
           <div>
@@ -110,7 +212,7 @@ export function ActionEditor({ action, categories, providers, onClose }: ActionE
               className="mt-1 w-full rounded-md border bg-background px-3 py-1.5 text-sm"
               value={form.name}
               onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-              placeholder="Explain"
+              placeholder="My prompt"
             />
           </div>
           <div>
@@ -130,7 +232,9 @@ export function ActionEditor({ action, categories, providers, onClose }: ActionE
               onChange={(e) => setForm((f) => ({ ...f, categoryId: e.target.value }))}
             >
               {categories.map((c) => (
-                <option key={c.id} value={c.id}>{c.icon} {c.name}</option>
+                <option key={c.id} value={c.id}>
+                  {c.icon} {c.name}
+                </option>
               ))}
             </select>
           </div>
@@ -139,10 +243,14 @@ export function ActionEditor({ action, categories, providers, onClose }: ActionE
             <select
               className="mt-1 w-full rounded-md border bg-background px-3 py-1.5 text-sm"
               value={form.outputMode}
-              onChange={(e) => setForm((f) => ({ ...f, outputMode: e.target.value as Action['outputMode'] }))}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, outputMode: e.target.value as Action['outputMode'] }))
+              }
             >
               {OUTPUT_MODES.map((m) => (
-                <option key={m.value} value={m.value}>{m.label}</option>
+                <option key={m.value} value={m.value}>
+                  {m.label}
+                </option>
               ))}
             </select>
           </div>
@@ -161,9 +269,10 @@ export function ActionEditor({ action, categories, providers, onClose }: ActionE
           <label className="text-xs text-muted-foreground">Prompt Template</label>
           <textarea
             className="mt-1 w-full rounded-md border bg-background px-3 py-2 font-mono text-sm"
-            rows={6}
+            rows={8}
             value={form.prompt}
             onChange={(e) => setForm((f) => ({ ...f, prompt: e.target.value }))}
+            placeholder="Explain this text:\n\n{{selection}}"
           />
           <div className="mt-2 flex flex-wrap gap-1">
             {TEMPLATE_VARIABLES.map((v) => (
@@ -190,7 +299,9 @@ export function ActionEditor({ action, categories, providers, onClose }: ActionE
             >
               <option value="">Default</option>
               {providers.filter((p) => p.enabled).map((p) => (
-                <option key={p.id} value={p.id}>{p.name}</option>
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
               ))}
             </select>
           </div>
@@ -236,15 +347,21 @@ export function ActionEditor({ action, categories, providers, onClose }: ActionE
           </label>
         </div>
 
+        {isEditing && action?.isBuiltIn && (
+          <p className="mt-3 text-xs text-amber-400">
+            Built-in action — changes apply globally. Use “Duplicate as custom” to keep your own editable copy.
+          </p>
+        )}
+
         <div className="mt-6 flex justify-between">
           <div>
-            {isEditing && !action.isBuiltIn && (
+            {isEditing && action && !action.isBuiltIn && (
               <Button
                 variant="outline"
                 size="sm"
                 className="text-red-400 hover:text-red-300"
                 onClick={() => {
-                  if (confirm('Delete this action?')) deleteMutation.mutate();
+                  if (confirm('Delete this custom action?')) deleteMutation.mutate();
                 }}
                 disabled={deleteMutation.isPending}
               >
@@ -253,13 +370,15 @@ export function ActionEditor({ action, categories, providers, onClose }: ActionE
             )}
           </div>
           <div className="flex gap-2">
-            <Button variant="ghost" size="sm" onClick={onClose}>Cancel</Button>
+            <Button variant="ghost" size="sm" onClick={onClose}>
+              Cancel
+            </Button>
             <Button
               size="sm"
               onClick={() => saveMutation.mutate()}
               disabled={!form.name.trim() || !form.prompt.trim() || saveMutation.isPending}
             >
-              {isEditing ? 'Save' : 'Create'}
+              {isEditing ? 'Save' : 'Create custom action'}
             </Button>
           </div>
         </div>

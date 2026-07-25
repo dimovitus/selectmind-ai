@@ -1,0 +1,39 @@
+.sw-capture-root {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  cursor: crosshair;
+  user-select: none;
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.sw-capture-hint {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
+  padding: 8px 14px;
+  border-radius: 8px;
+  background: rgba(24, 24, 27, 0.92);
+  border: 1px solid rgba(63, 63, 70, 0.8);
+  color: #e4e4e7;
+  font-size: 13px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+}
+
+.sw-capture-shade {
+  position: fixed;
+  background: rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+}
+
+.sw-capture-selection {
+  position: fixed;
+  z-index: 1;
+  border: 2px solid #8b5cf6;
+  background: rgba(139, 92, 246, 0.12);
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+}

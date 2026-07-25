@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { rpcClient } from '@/infrastructure/messaging/rpc-client';
 import { Button } from '@/presentation/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/presentation/components/ui/card';
@@ -8,6 +8,7 @@ import { PRODUCT_SLUG } from '@/shared/constants/brand';
 
 export function ImportExportSection() {
   const [importResult, setImportResult] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
   const exportMutation = useMutation({
     mutationFn: () => rpcClient.call('export:bundle', undefined),
@@ -27,6 +28,7 @@ export function ImportExportSection() {
     mutationFn: (bundle: ExportBundle) => rpcClient.call('import:bundle', { bundle }),
     onSuccess: (result) => {
       setImportResult(`Imported ${result.imported} items successfully.`);
+      void queryClient.invalidateQueries();
     },
     onError: (error: Error) => {
       setImportResult(`Import failed: ${error.message}`);

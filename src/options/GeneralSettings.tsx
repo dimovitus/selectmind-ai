@@ -8,6 +8,7 @@ import {
   RESPONSE_LANGUAGE_OPTIONS,
   type ResponseLanguageCode,
 } from '@/shared/constants/response-languages';
+import { SupportSection } from './SupportSection';
 
 interface GeneralSettingsProps {
   settings: Settings;
@@ -19,7 +20,10 @@ export function GeneralSettings({ settings, providers }: GeneralSettingsProps) {
 
   const updateMutation = useMutation({
     mutationFn: (partial: Partial<Settings>) => rpcClient.call('settings:update', partial),
-    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['settings'] }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['settings'] });
+      void queryClient.invalidateQueries({ queryKey: ['actions'] });
+    },
   });
 
   const enabledProviders = providers.filter((p) => p.enabled);
@@ -105,8 +109,8 @@ export function GeneralSettings({ settings, providers }: GeneralSettingsProps) {
               ))}
             </select>
             <p className="mt-1.5 text-xs text-muted-foreground">
-              Applies to Explain, Chat, and other AI responses. Auto follows the selected text
-              language.
+              Applies to AI responses and built-in action names/prompts. Auto follows the
+              selected text or browser language.
             </p>
           </div>
         </CardContent>
@@ -141,24 +145,46 @@ export function GeneralSettings({ settings, providers }: GeneralSettingsProps) {
               />
             </button>
           </label>
-          <div>
-            <label className="text-xs text-muted-foreground">
-              Conversation retention ({settings.conversationRetentionDays} days)
-            </label>
-            <input
-              type="range"
-              min={7}
-              max={365}
-              step={1}
-              className="mt-2 w-full"
-              value={settings.conversationRetentionDays}
-              onChange={(e) =>
-                updateMutation.mutate({ conversationRetentionDays: parseInt(e.target.value, 10) })
+          <label className="flex items-center justify-between text-sm">
+            <span>Save conversations to sidebar history</span>
+            <button
+              type="button"
+              className={`relative h-5 w-9 rounded-full transition-colors ${settings.saveConversationHistory ? 'bg-primary' : 'bg-muted'}`}
+              onClick={() =>
+                updateMutation.mutate({ saveConversationHistory: !settings.saveConversationHistory })
               }
-            />
-          </div>
+            >
+              <span
+                className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${settings.saveConversationHistory ? 'translate-x-4' : 'translate-x-0.5'}`}
+              />
+            </button>
+          </label>
+          <p className="text-xs text-muted-foreground">
+            When off, chats still work in popups but are removed from the side panel after you close
+            them. Opening a chat in the workspace keeps it in history.
+          </p>
+          {settings.saveConversationHistory && (
+            <div>
+              <label className="text-xs text-muted-foreground">
+                Conversation retention ({settings.conversationRetentionDays} days)
+              </label>
+              <input
+                type="range"
+                min={7}
+                max={365}
+                step={1}
+                className="mt-2 w-full"
+                value={settings.conversationRetentionDays}
+                onChange={(e) =>
+                  updateMutation.mutate({ conversationRetentionDays: parseInt(e.target.value, 10) })
+                }
+              />
+            </div>
+          )}
         </CardContent>
       </Card>
+
+      <SupportSection />
     </div>
   );
 }

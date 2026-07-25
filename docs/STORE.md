@@ -104,10 +104,12 @@ Upload `selectmind-ai-v0.1.0.zip` to the [Chrome Web Store Developer Dashboard](
 
 ## Pre-Submit Checklist
 
-- [ ] Replace placeholder icons with final artwork (`node scripts/generate-icons.mjs`)
-- [ ] Run `npm run build` with zero TypeScript errors
-- [ ] Run `npm run test` and `npm run test:e2e`
+- [x] Replace placeholder icons with final artwork (`npm run generate:icons`)
+- [x] Run `npm run build` with zero TypeScript errors
+- [x] Run `npm run test`
+- [ ] Run `npm run test:e2e` (optional smoke)
 - [ ] Test on fresh Chrome profile (install → onboarding → first action)
 - [ ] Publish privacy policy URL → `https://dimovitus.github.io/selectmind-ai/privacy.html`
-- [ ] Prepare 5+ screenshots
-- [ ] Review permissions in manifest match store justification
+- [x] Prepare store screenshots → `docs/store-screenshots/` (`npm run capture:screenshots`)
+- [x] Package ZIP → `selectmind-ai-v0.1.0.zip` (`npm run package:store`)
+- [x] Review permissions in manifest match store justification

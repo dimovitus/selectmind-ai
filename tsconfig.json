@@ -18,9 +18,16 @@
     "noUncheckedIndexedAccess": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["src/*"],
+      "@/application/*": ["packages/core/src/application/*"],
+      "@/domain/*": ["packages/core/src/domain/*"],
+      "@/infrastructure/ai/*": ["packages/core/src/ai/*"],
+      "@/shared/*": ["packages/shared/src/*"],
+      "@selectmind/core": ["packages/core/src/index.ts"],
+      "@selectmind/shared": ["packages/shared/src/index.ts"]
     },
     "types": ["chrome", "vite/client"]
   },
-  "include": ["src"]
+  "include": ["src", "packages/core/src", "packages/shared/src", "tests/unit"],
+  "exclude": ["apps/**", "dist", "node_modules"]
 }

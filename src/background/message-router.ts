@@ -15,8 +15,9 @@ import type { ProviderConfig } from '@/domain/provider/provider.schema';
 import { ActionSchema, CategorySchema } from '@/domain/action/action.schema';
 import { buildExportBundle, parseExportBundle } from '@/application/import-export.use-case';
 import { PipelineSchema } from '@/domain/provider/provider.schema';
-import { storeApiKey, deleteApiKey } from '@/infrastructure/crypto/api-key-store';
 import { PushEmitter } from '@/infrastructure/messaging/rpc-client';
+import { refreshContextMenus } from './context-menus';
+import { localizeAction, localizeActions } from '@/shared/utils/localize-action';
 
 const pushEmitter = new PushEmitter();
 
@@ -33,6 +34,7 @@ export function setupMessageRouter(): void {
     streamConversation,
     runPipeline,
     aiRouter,
+    platform,
   } = getContainer();
 
   rpcServer.register('ping', async () => ({
@@ -42,7 +44,9 @@ export function setupMessageRouter(): void {
 
   rpcServer.register('action:list', async () => {
     await ensureDatabaseSeeded();
-    return actionRepo.getAll();
+    const settings = await settingsRepo.get();
+    const actions = await actionRepo.getAll();
+    return localizeActions(actions, settings.responseLanguage);
   });
 
   rpcServer.register('action:toolbar', async () => {
@@ -51,20 +55,22 @@ export function setupMessageRouter(): void {
     const allActions = await actionRepo.getAll();
     const actionMap = new Map(allActions.map((a) => [a.id, a]));
 
-    if (settings.toolbarActionIds.length > 0) {
-      return settings.toolbarActionIds
-        .map((id) => actionMap.get(id))
-        .filter((a): a is Action => !!a && a.isEnabled)
-        .slice(0, settings.maxToolbarActions);
-    }
+    const toolbar =
+      settings.toolbarActionIds.length > 0
+        ? settings.toolbarActionIds
+            .map((id) => actionMap.get(id))
+            .filter((a): a is Action => !!a && a.isEnabled)
+        : allActions.filter((a) => a.isEnabled).sort((a, b) => a.order - b.order);
 
-    return allActions
-      .filter((a) => a.isEnabled)
-      .sort((a, b) => a.order - b.order)
-      .slice(0, settings.maxToolbarActions);
+    return localizeActions(toolbar, settings.responseLanguage);
   });
 
-  rpcServer.register('action:get', async ({ actionId }) => actionRepo.getById(actionId));
+  rpcServer.register('action:get', async ({ actionId }) => {
+    const action = await actionRepo.getById(actionId);
+    if (!action) return null;
+    const settings = await settingsRepo.get();
+    return localizeAction(action, settings.responseLanguage);
+  });
 
   rpcServer.register('action:save', async ({ action }) => {
     const parsed = ActionSchema.parse(action);
@@ -79,6 +85,7 @@ export function setupMessageRouter(): void {
     };
 
     await actionRepo.save(toSave);
+    void refreshContextMenus();
     return toSave;
   });
 
@@ -130,7 +137,13 @@ export function setupMessageRouter(): void {
 
   rpcServer.register('settings:get', async () => settingsRepo.get());
 
-  rpcServer.register('settings:update', async (partial) => settingsRepo.update(partial));
+  rpcServer.register('settings:update', async (partial) => {
+    const result = await settingsRepo.update(partial);
+    if (partial.toolbarActionIds !== undefined || partial.responseLanguage !== undefined) {
+      void refreshContextMenus();
+    }
+    return result;
+  });
 
   rpcServer.register('provider:list', async () => {
     const providers = await providerRepo.getAll();
@@ -138,17 +151,27 @@ export function setupMessageRouter(): void {
   });
 
   rpcServer.register('provider:save', async ({ config, apiKey }) => {
-    await providerRepo.save(config);
-    if (apiKey) {
-      await storeApiKey(config.id, apiKey);
+    const trimmedKey = apiKey?.trim();
+
+    if (trimmedKey) {
+      await platform.secrets.storeApiKey(config.id, trimmedKey);
     }
+
+    if (config.enabled && config.type === 'cloud') {
+      const hasKey = Boolean(trimmedKey) || (await platform.secrets.hasApiKey(config.id));
+      if (!hasKey) {
+        throw new Error('API key is required for cloud providers');
+      }
+    }
+
+    await providerRepo.save(config);
     await reloadProviderRegistry();
     return stripApiKey(config);
   });
 
   rpcServer.register('provider:delete', async ({ providerId }) => {
     await providerRepo.delete(providerId);
-    await deleteApiKey(providerId);
+    await platform.secrets.deleteApiKey(providerId);
     await reloadProviderRegistry();
   });
 
@@ -177,11 +200,15 @@ export function setupMessageRouter(): void {
     return { deleted };
   });
 
+  rpcServer.register('conversation:delete', async ({ conversationId }) => {
+    await conversationRepo.delete(conversationId);
+  });
+
   rpcServer.register('conversation:promote', async ({ conversationId, mode }) => {
     const conversation = await conversationRepo.getById(conversationId);
     if (!conversation) throw new Error(`Conversation not found: ${conversationId}`);
 
-    const updated = { ...conversation, mode, updatedAt: now() };
+    const updated = { ...conversation, mode, ephemeral: false, updatedAt: now() };
     await conversationRepo.save(updated);
     return updated;
   });
@@ -189,12 +216,14 @@ export function setupMessageRouter(): void {
   rpcServer.register('conversation:create', async ({ mode, contextBundle, sourceActionId }) => {
     const conversationId = createConversationId();
     const timestamp = now();
+    const ephemeral = await shouldMarkConversationEphemeral(settingsRepo);
 
     await conversationRepo.save({
       id: conversationId,
       mode,
       contextBundle,
       sourceActionId,
+      ephemeral,
       createdAt: timestamp,
       updatedAt: timestamp,
     });
@@ -206,25 +235,29 @@ export function setupMessageRouter(): void {
     const action = await actionRepo.getById(actionId);
     if (!action) throw new Error(`Action not found: ${actionId}`);
 
+    const settings = await settingsRepo.get();
+    const localizedAction = localizeAction(action, settings.responseLanguage, context.language);
     const contextBundle = pageContextToBundle(context);
 
-    if (action.pipelineId) {
+    if (localizedAction.pipelineId) {
       return runPipeline.execute({
-        pipelineId: action.pipelineId,
+        pipelineId: localizedAction.pipelineId,
         contextBundle,
-        sourceAction: action,
+        sourceAction: localizedAction,
       });
     }
 
     const conversationId = createConversationId();
     const timestamp = now();
-    const resolvedPrompt = buildActionPrompt(action, contextBundle);
+    const resolvedPrompt = buildActionPrompt(localizedAction, contextBundle);
+    const ephemeral = await shouldMarkConversationEphemeral(settingsRepo);
 
     await conversationRepo.save({
       id: conversationId,
-      mode: outputModeToConversationMode(action.outputMode),
+      mode: outputModeToConversationMode(localizedAction.outputMode),
       contextBundle,
       sourceActionId: actionId,
+      ephemeral,
       createdAt: timestamp,
       updatedAt: timestamp,
     });
@@ -238,7 +271,7 @@ export function setupMessageRouter(): void {
     });
 
     void streamConversation
-      .execute({ conversationId, contextBundle, action })
+      .execute({ conversationId, contextBundle, action: localizedAction })
       .catch(console.error);
 
     return { conversationId };
@@ -314,15 +347,23 @@ export function setupMessageRouter(): void {
 
     await conversationRepo.save({ ...conversation, updatedAt: timestamp });
 
+    const settings = await settingsRepo.get();
     const sourceAction = conversation.sourceActionId
       ? await actionRepo.getById(conversation.sourceActionId as ActionId)
       : null;
+    const localizedAction = sourceAction
+      ? localizeAction(
+          sourceAction,
+          settings.responseLanguage,
+          conversation.contextBundle.language,
+        )
+      : undefined;
 
     void streamConversation
       .execute({
         conversationId,
         contextBundle: conversation.contextBundle,
-        action: sourceAction ?? undefined,
+        action: localizedAction,
       })
       .catch(console.error);
 
@@ -378,4 +419,11 @@ function outputModeToConversationMode(
 
 function stripApiKey(config: ProviderConfig): ProviderConfig {
   return { ...config, apiKey: undefined };
+}
+
+async function shouldMarkConversationEphemeral(
+  settingsRepo: { get(): Promise<import('@/shared/types/settings').Settings> },
+): Promise<boolean> {
+  const settings = await settingsRepo.get();
+  return !settings.saveConversationHistory;
 }

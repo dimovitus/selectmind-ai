@@ -7,9 +7,14 @@ import type { ProviderConfig } from '@/domain/provider/provider.schema';
 interface OnboardingWizardProps {
   providers: ProviderConfig[];
   onComplete: () => void;
+  variant?: 'extension' | 'desktop';
 }
 
-export function OnboardingWizard({ providers, onComplete }: OnboardingWizardProps) {
+export function OnboardingWizard({
+  providers,
+  onComplete,
+  variant = 'extension',
+}: OnboardingWizardProps) {
   const [step, setStep] = useState(0);
   const [selectedProvider, setSelectedProvider] = useState(providers[0]?.id ?? '');
   const [apiKey, setApiKey] = useState('');
@@ -30,7 +35,7 @@ export function OnboardingWizard({ providers, onComplete }: OnboardingWizardProp
           defaultModel: model || selected.defaultModel,
           updatedAt: Date.now(),
         },
-        apiKey: needsKey ? apiKey : undefined,
+        apiKey: needsKey ? apiKey.trim() : undefined,
       });
 
       await rpcClient.call('settings:update', {
@@ -50,20 +55,36 @@ export function OnboardingWizard({ providers, onComplete }: OnboardingWizardProp
     onComplete();
   };
 
-  const steps = [
-    {
-      title: 'Welcome to SelectMind AI 🧠',
-      body: 'Turn any webpage into an AI-powered workspace. Select text, use the floating toolbar, or press Ctrl+Shift+P.',
-    },
-    {
-      title: 'Connect an AI Provider',
-      body: 'Choose a provider and enter your API key. Ollama works locally without a key.',
-    },
-    {
-      title: "You're Ready!",
-      body: 'Select text on any page and click 🧠 Explain. Use Ctrl+Shift+P for the Command Palette.',
-    },
-  ];
+  const steps =
+    variant === 'desktop'
+      ? [
+          {
+            title: 'Welcome to SelectMind AI 🧠',
+            body: 'Capture any screen region with Ctrl+Shift+X, then ask AI to explain. Press Ctrl+Shift+P for the command palette.',
+          },
+          {
+            title: 'Connect an AI Provider',
+            body: 'Choose a provider and enter your API key. Ollama works locally without a key.',
+          },
+          {
+            title: "You're Ready!",
+            body: 'Use the OCR button or hotkey to capture screen text. Run actions and pipelines from Settings or the command palette.',
+          },
+        ]
+      : [
+          {
+            title: 'Welcome to SelectMind AI 🧠',
+            body: 'Turn any webpage into an AI-powered workspace. Select text, use the floating toolbar, or press Ctrl+Shift+P.',
+          },
+          {
+            title: 'Connect an AI Provider',
+            body: 'Choose a provider and enter your API key. Ollama works locally without a key.',
+          },
+          {
+            title: "You're Ready!",
+            body: 'Select text on any page and click 🧠 Explain. Use Ctrl+Shift+P for the Command Palette.',
+          },
+        ];
 
   const current = steps[step]!;
 
@@ -104,11 +125,19 @@ export function OnboardingWizard({ providers, onComplete }: OnboardingWizardProp
               <input
                 type="password"
                 className="w-full rounded-md border bg-background px-3 py-2 text-sm"
-                placeholder="API key (sk-...)"
+                placeholder="API key (Gemini: AIza… · OpenAI: sk-…)"
                 value={apiKey}
                 onChange={(e) => setApiKey(e.target.value)}
               />
             )}
+
+            {saveMutation.isError ? (
+              <p className="text-sm text-red-400">
+                {saveMutation.error instanceof Error
+                  ? saveMutation.error.message
+                  : 'Failed to save provider settings'}
+              </p>
+            ) : null}
 
             <input
               className="w-full rounded-md border bg-background px-3 py-2 text-sm"

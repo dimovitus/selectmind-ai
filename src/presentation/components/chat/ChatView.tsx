@@ -20,8 +20,10 @@ interface ChatViewProps {
   contextBundle?: ContextBundle;
   onAddContext?: (fragment: ReturnType<typeof createContextFragment>) => Promise<void>;
   resolvePageContext?: () => PageContext | Promise<PageContext>;
+  onOpenSettings?: () => void;
   compact?: boolean;
   hideInitialUserMessage?: boolean;
+  inputPlaceholder?: string;
   className?: string;
 }
 
@@ -30,12 +32,18 @@ export function ChatView({
   contextBundle: initialBundle,
   onAddContext,
   resolvePageContext,
+  onOpenSettings,
   compact,
   hideInitialUserMessage,
+  inputPlaceholder,
   className,
 }: ChatViewProps) {
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
+  const [awaitingResponse, setAwaitingResponse] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
+  const [streamTurn, setStreamTurn] = useState(0);
+  const [expectedAssistantCount, setExpectedAssistantCount] = useState(1);
   const [contextNotice, setContextNotice] = useState<string | null>(null);
   const [olderMessages, setOlderMessages] = useState<Message[]>([]);
   const [hasMore, setHasMore] = useState(false);
@@ -44,7 +52,11 @@ export function ChatView({
   const bottomRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
 
-  const { content, isStreaming, error, isDone } = useStreaming(conversationId);
+  const { content, isStreaming, error, isDone } = useStreaming(
+    conversationId,
+    streamTurn,
+    expectedAssistantCount,
+  );
 
   const { data: conversation } = useQuery({
     queryKey: ['conversation', conversationId],
@@ -83,6 +95,18 @@ export function ChatView({
   }, [conversationId, queryClient]);
 
   useEffect(() => {
+    if (isStreaming) {
+      setAwaitingResponse(false);
+    }
+  }, [isStreaming]);
+
+  useEffect(() => {
+    if (error) {
+      setAwaitingResponse(false);
+    }
+  }, [error]);
+
+  useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [allMessages.length, content, isStreaming]);
 
@@ -115,8 +139,14 @@ export function ChatView({
   }, [handleLoadMore, loadingMore, hasMore]);
 
   const handleSend = async () => {
-    if (!input.trim() || sending || isStreaming) return;
+    if (!input.trim() || sending || isStreaming || awaitingResponse) return;
+    const nextAssistantCount =
+      allMessages.filter((message) => message.role === 'assistant').length + 1;
     setSending(true);
+    setSendError(null);
+    setAwaitingResponse(true);
+    setExpectedAssistantCount(nextAssistantCount);
+    setStreamTurn((turn) => turn + 1);
     try {
       await rpcClient.call('conversation:continue', {
         conversationId,
@@ -124,6 +154,9 @@ export function ChatView({
       });
       setInput('');
       void refetch();
+    } catch (caught) {
+      setAwaitingResponse(false);
+      setSendError(caught instanceof Error ? caught.message : 'Failed to send message');
     } finally {
       setSending(false);
     }
@@ -188,6 +221,11 @@ export function ChatView({
           compact={compact}
         />
       )}
+      {contextBundle?.screenshot?.dataUrl && (
+        <div className="sw-screenshot-preview">
+          <img src={contextBundle.screenshot.dataUrl} alt="Captured screenshot" />
+        </div>
+      )}
       {contextNotice && <p className="sw-context-notice">{contextNotice}</p>}
 
       <div className="sw-chat-messages" ref={scrollRef} onScroll={handleScroll}>
@@ -216,21 +254,29 @@ export function ChatView({
           </div>
         )}
 
-        {isStreaming && !content && !error && (
+        {(awaitingResponse && !isStreaming && !error) || (isStreaming && !content && !error) ? (
           <div className="sw-chat-thinking">
             <span className="sw-dot" />
             <span className="sw-dot" />
             <span className="sw-dot" />
           </div>
-        )}
+        ) : null}
 
-        {error && (
+        {error || sendError ? (
           <ErrorDisplay
-            error={error}
-            onOpenSettings={() => void chrome.runtime.openOptionsPage()}
+            error={error ?? sendError ?? 'Unknown error'}
+            onOpenSettings={
+              onOpenSettings ??
+              (() => {
+                const g = globalThis as typeof globalThis & {
+                  chrome?: { runtime?: { openOptionsPage?: () => void } };
+                };
+                g.chrome?.runtime?.openOptionsPage?.();
+              })
+            }
             compact
           />
-        )}
+        ) : null}
 
         <div ref={bottomRef} />
       </div>
@@ -240,7 +286,8 @@ export function ChatView({
         onChange={setInput}
         onSend={() => void handleSend()}
         onAddContext={handleAddContext}
-        disabled={sending || isStreaming}
+        disabled={sending || isStreaming || awaitingResponse}
+        placeholder={inputPlaceholder}
         addContextTitle="Добавить выделенный текст на странице в контекст"
       />
     </div>

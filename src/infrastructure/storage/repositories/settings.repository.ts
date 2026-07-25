@@ -1,18 +1,12 @@
 import type { ProviderConfig } from '@/domain/provider/provider.schema';
 import type { ProviderId } from '@/domain/shared/ids';
-import type { Settings, SyncSettings } from '@/shared/types/settings';
-import { DEFAULT_SETTINGS } from '@/shared/types/settings';
+import type { ProviderRepositoryPort, SettingsPort } from '@selectmind/core';
+import type { Settings } from '@/shared/types/settings';
+import { getExtensionPlatform } from '@/platform/extension';
+import { ChromeSettingsAdapter } from '@/platform/extension/chrome-settings.adapter';
 import { getDB } from '../indexeddb.adapter';
 
-const SETTINGS_KEY = 'saywa_settings';
-const SYNC_KEY = 'saywa_sync';
-
-export interface ProviderRepositoryPort {
-  getAll(): Promise<ProviderConfig[]>;
-  getById(id: ProviderId): Promise<ProviderConfig | null>;
-  save(provider: ProviderConfig): Promise<void>;
-  delete(id: ProviderId): Promise<void>;
-}
+export type { ProviderRepositoryPort };
 
 export class ProviderRepository implements ProviderRepositoryPort {
   async getAll(): Promise<ProviderConfig[]> {
@@ -32,37 +26,21 @@ export class ProviderRepository implements ProviderRepositoryPort {
   }
 }
 
+/** Facade over SettingsPort — keeps existing repository API for use-cases/RPC. */
 export class SettingsRepository {
+  constructor(private readonly settings: SettingsPort = getExtensionPlatform().settings) {}
+
   async get(): Promise<Settings> {
-    const result = await chrome.storage.local.get(SETTINGS_KEY);
-    const stored = result[SETTINGS_KEY] as Settings | undefined;
-    return { ...DEFAULT_SETTINGS, ...stored };
+    return this.settings.get() as Promise<Settings>;
   }
 
   async update(partial: Partial<Settings>): Promise<Settings> {
-    const current = await this.get();
-    const updated = { ...current, ...partial };
-    await chrome.storage.local.set({ [SETTINGS_KEY]: updated });
-    await this.syncToCloud(updated);
-    return updated;
-  }
-
-  private async syncToCloud(settings: Settings): Promise<void> {
-    const syncPayload: SyncSettings = {
-      theme: settings.theme,
-      responseLanguage: settings.responseLanguage,
-      toolbarActionIds: settings.toolbarActionIds,
-      showFloatingToolbar: settings.showFloatingToolbar,
-      enableStreaming: settings.enableStreaming,
-    };
-    await chrome.storage.sync.set({ [SYNC_KEY]: syncPayload });
+    return this.settings.update(partial) as Promise<Settings>;
   }
 
   async pullFromSync(): Promise<void> {
-    const result = await chrome.storage.sync.get(SYNC_KEY);
-    const syncSettings = result[SYNC_KEY] as SyncSettings | undefined;
-    if (syncSettings) {
-      await this.update(syncSettings);
+    if (this.settings instanceof ChromeSettingsAdapter) {
+      await this.settings.pullFromSync();
     }
   }
 }

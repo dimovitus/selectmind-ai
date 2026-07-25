@@ -8,6 +8,8 @@ import { ChatView } from '@/presentation/components/chat/ChatView';
 import { popupPositionStyle, useClickOutside } from './mount';
 import { getPopupPosition } from './positioning';
 import { useKeyboardIsolation, usePopupDrag, useResizablePopup } from './popup-hooks';
+import { FREE_CHAT_ACTION, FREE_CHAT_INPUT_PLACEHOLDER } from '@/shared/constants/free-chat';
+import { SCREENSHOT_ACTION_ID } from '@/shared/constants/screenshot-action';
 import { extractPageContext } from '@/content/page-context-extractor';
 import type { SelectionRect } from '../selection-rect';
 import chatStyles from '@/presentation/components/chat/chat.css?inline';
@@ -65,7 +67,15 @@ function ChatPopupInner({
         </button>
       </div>
       <div className="saywa-chat-popup-body">
-        <ChatView conversationId={conversationId} compact resolvePageContext={() => extractPageContext()} />
+            <ChatView
+              conversationId={conversationId}
+              compact
+              resolvePageContext={() => extractPageContext()}
+              hideInitialUserMessage={action.id === SCREENSHOT_ACTION_ID}
+              inputPlaceholder={
+                action.id === FREE_CHAT_ACTION.id ? FREE_CHAT_INPUT_PLACEHOLDER : undefined
+              }
+            />
       </div>
     </motion.div>
   );

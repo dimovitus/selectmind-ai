@@ -9,13 +9,22 @@ interface StreamingState {
   isDone: boolean;
 }
 
-async function fetchAssistantMessage(conversationId: ConversationId): Promise<string | null> {
+async function fetchAssistantMessage(
+  conversationId: ConversationId,
+  minAssistantCount = 1,
+): Promise<string | null> {
   const { messages } = await rpcClient.call('conversation:messages', { conversationId });
-  const assistant = [...messages].reverse().find((m) => m.role === 'assistant');
-  return assistant?.content ?? null;
+  const assistants = messages.filter((m) => m.role === 'assistant');
+  if (assistants.length < minAssistantCount) return null;
+  return assistants.at(-1)?.content ?? null;
 }
 
-export function useStreaming(conversationId: ConversationId | null): StreamingState {
+export function useStreaming(
+  conversationId: ConversationId | null,
+  /** Increment to start a fresh assistant turn (follow-up messages). */
+  turn = 0,
+  expectedAssistantCount = 1,
+): StreamingState {
   const [content, setContent] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -39,23 +48,23 @@ export function useStreaming(conversationId: ConversationId | null): StreamingSt
     }
 
     reset();
-    setIsStreaming(true);
     pushListener.listen();
 
     const applyBuffer = () => {
       const buffered = pushListener.getBufferedStream(conversationId);
       if (!buffered) return;
-      if (buffered.content) {
-        startedRef.current = true;
-        setContent(buffered.content);
-      }
       if (buffered.error) {
         setError(buffered.error);
         setIsStreaming(false);
+        return;
       }
-      if (buffered.done) {
-        setIsStreaming(false);
-        setIsDone(true);
+      if (buffered.content) {
+        startedRef.current = true;
+        setContent(buffered.content);
+        setIsStreaming(!buffered.done);
+        if (buffered.done) {
+          setIsDone(true);
+        }
       }
     };
 
@@ -93,15 +102,20 @@ export function useStreaming(conversationId: ConversationId | null): StreamingSt
 
     const pollFallback = async () => {
       try {
-        const text = await fetchAssistantMessage(conversationId);
+        const text = await fetchAssistantMessage(conversationId, expectedAssistantCount);
         if (text) {
           startedRef.current = true;
           setContent(text);
           setIsStreaming(false);
           setIsDone(true);
+          isDoneRef.current = true;
+        } else if (!startedRef.current) {
+          setIsStreaming(false);
         }
       } catch {
-        // Background may still be processing
+        if (!startedRef.current) {
+          setIsStreaming(false);
+        }
       }
     };
 
@@ -111,6 +125,9 @@ export function useStreaming(conversationId: ConversationId | null): StreamingSt
     const t2 = window.setTimeout(() => {
       if (!startedRef.current) void pollFallback();
     }, 4000);
+    const t3 = window.setTimeout(() => {
+      if (!startedRef.current) void pollFallback();
+    }, 8000);
 
     return () => {
       unsubChunk();
@@ -118,8 +135,9 @@ export function useStreaming(conversationId: ConversationId | null): StreamingSt
       unsubError();
       window.clearTimeout(t1);
       window.clearTimeout(t2);
+      window.clearTimeout(t3);
     };
-  }, [conversationId, reset]);
+  }, [conversationId, turn, expectedAssistantCount, reset]);
 
   return { content, isStreaming, error, isDone };
 }

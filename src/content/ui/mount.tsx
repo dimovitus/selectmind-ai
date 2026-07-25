@@ -52,6 +52,18 @@ export function mountContentUI(children: ReactNode, styles: string): void {
   reactRoot.render(children);
 }
 
+/** Append a full-screen overlay inside the content script layer (shadow DOM). */
+export function appendToContentLayer(element: HTMLElement): void {
+  const app = shadowRoot?.querySelector('#saywa-app') as HTMLElement | null;
+  if (app) {
+    element.style.pointerEvents = 'auto';
+    app.appendChild(element);
+    return;
+  }
+  element.style.pointerEvents = 'auto';
+  document.body.appendChild(element);
+}
+
 export function unmountContentUI(): void {
   reactRoot?.unmount();
   reactRoot = null;

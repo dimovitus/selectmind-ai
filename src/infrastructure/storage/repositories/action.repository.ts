@@ -1,17 +1,10 @@
 import type { Action } from '@/domain/action/action.schema';
 import type { Category } from '@/domain/action/action.schema';
 import type { ActionId } from '@/domain/shared/ids';
+import type { ActionRepositoryPort, CategoryRepositoryPort } from '@selectmind/core';
 import { getDB } from '../indexeddb.adapter';
 
-export interface ActionRepositoryPort {
-  getAll(): Promise<Action[]>;
-  getById(id: ActionId): Promise<Action | null>;
-  getByCategory(categoryId: string): Promise<Action[]>;
-  getToolbarActions(limit: number): Promise<Action[]>;
-  save(action: Action): Promise<void>;
-  saveMany(actions: Action[]): Promise<void>;
-  delete(id: ActionId): Promise<void>;
-}
+export type { ActionRepositoryPort, CategoryRepositoryPort };
 
 export class ActionRepository implements ActionRepositoryPort {
   async getAll(): Promise<Action[]> {
@@ -42,14 +35,6 @@ export class ActionRepository implements ActionRepositoryPort {
   async delete(id: ActionId): Promise<void> {
     await getDB().actions.delete(id);
   }
-}
-
-export interface CategoryRepositoryPort {
-  getAll(): Promise<Category[]>;
-  getById(id: string): Promise<Category | null>;
-  save(category: Category): Promise<void>;
-  saveMany(categories: Category[]): Promise<void>;
-  delete(id: string): Promise<void>;
 }
 
 export class CategoryRepository implements CategoryRepositoryPort {

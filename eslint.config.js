@@ -16,7 +16,7 @@ export default tseslint.config(
         ...globals.webextensions,
       },
       parserOptions: {
-        project: ['./tsconfig.json', './tsconfig.node.json'],
+        project: ['./tsconfig.json', './tsconfig.node.json', './packages/core/tsconfig.json'],
         tsconfigRootDir: import.meta.dirname,
       },
     },

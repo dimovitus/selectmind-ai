@@ -24,6 +24,15 @@ function buildChips(bundle: ContextBundle): ContextChip[] {
     });
   }
 
+  if (bundle.screenshot) {
+    chips.push({
+      id: 'screenshot',
+      icon: '📸',
+      label: 'Screenshot',
+      preview: `${bundle.screenshot.width}×${bundle.screenshot.height}${bundle.screenshot.ocrText ? ` · ${truncate(bundle.screenshot.ocrText, 40)}` : ''}`,
+    });
+  }
+
   if (bundle.pageTitle) {
     chips.push({
       id: 'page',

@@ -5,17 +5,23 @@ import type { Settings } from '@/shared/types/settings';
 import { rpcClient } from '@/infrastructure/messaging/rpc-client';
 import { Button } from '@/presentation/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/presentation/components/ui/card';
+import { FREE_CHAT_ACTION } from '@/shared/constants/free-chat';
 
 interface ToolbarCustomizerProps {
   actions: Action[];
   settings: Settings;
+  onCreateCustom: () => void;
 }
 
-export function ToolbarCustomizer({ actions, settings }: ToolbarCustomizerProps) {
+export function ToolbarCustomizer({ actions, settings, onCreateCustom }: ToolbarCustomizerProps) {
   const queryClient = useQueryClient();
-  const toolbarIds = settings.toolbarActionIds.length > 0
-    ? settings.toolbarActionIds
-    : actions.filter((a) => a.isEnabled).sort((a, b) => a.order - b.order).slice(0, settings.maxToolbarActions).map((a) => a.id);
+  const toolbarIds =
+    settings.toolbarActionIds.length > 0
+      ? settings.toolbarActionIds
+      : actions
+          .filter((a) => a.isEnabled)
+          .sort((a, b) => a.order - b.order)
+          .map((a) => a.id);
 
   const actionMap = new Map(actions.map((a) => [a.id, a]));
   const toolbarActions = toolbarIds
@@ -25,6 +31,7 @@ export function ToolbarCustomizer({ actions, settings }: ToolbarCustomizerProps)
   const availableActions = actions.filter(
     (a) => a.isEnabled && !toolbarIds.includes(a.id),
   );
+  const customActionsInToolbar = toolbarActions.filter((a) => !a.isBuiltIn);
 
   const saveToolbar = async (ids: ActionId[]) => {
     await rpcClient.call('settings:update', { toolbarActionIds: ids });
@@ -50,7 +57,6 @@ export function ToolbarCustomizer({ actions, settings }: ToolbarCustomizerProps)
   };
 
   const add = (id: ActionId) => {
-    if (toolbarIds.length >= settings.maxToolbarActions) return;
     void saveToolbar([...toolbarIds, id]);
   };
 
@@ -61,20 +67,25 @@ export function ToolbarCustomizer({ actions, settings }: ToolbarCustomizerProps)
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
+      <CardHeader className="flex flex-row items-center justify-between gap-2">
         <CardTitle>Floating Toolbar</CardTitle>
-        <Button variant="ghost" size="sm" onClick={() => resetMutation.mutate()}>
-          Reset to default
-        </Button>
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" onClick={onCreateCustom}>
+            + Custom prompt
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => resetMutation.mutate()}>
+            Reset to default
+          </Button>
+        </div>
       </CardHeader>
       <CardContent className="space-y-4">
         <p className="text-xs text-muted-foreground">
-          Customize which actions appear in the floating toolbar (max {settings.maxToolbarActions}).
+          Choose any number of actions for the floating toolbar. Scroll horizontally if the bar gets long.
         </p>
 
         <div>
           <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Toolbar ({toolbarActions.length}/{settings.maxToolbarActions})
+            Toolbar ({toolbarActions.length})
           </p>
           <div className="space-y-1">
             {toolbarActions.map((action, index) => (
@@ -94,7 +105,7 @@ export function ToolbarCustomizer({ actions, settings }: ToolbarCustomizerProps)
           </div>
         </div>
 
-        {availableActions.length > 0 && toolbarActions.length < settings.maxToolbarActions && (
+        {availableActions.length > 0 && (
           <div>
             <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
               Available Actions
@@ -114,10 +125,23 @@ export function ToolbarCustomizer({ actions, settings }: ToolbarCustomizerProps)
           </div>
         )}
 
+        {customActionsInToolbar.length > 0 && (
+          <p className="text-xs text-muted-foreground">
+            Custom prompts in toolbar: {customActionsInToolbar.map((a) => a.name).join(', ')}
+          </p>
+        )}
+
         {/* Preview */}
         <div>
           <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">Preview</p>
           <div className="inline-flex items-center gap-1 rounded-lg border bg-zinc-900 p-1">
+            <div
+              className="flex h-8 w-8 items-center justify-center rounded-md text-base ring-1 ring-violet-500/40"
+              title={FREE_CHAT_ACTION.name}
+            >
+              {FREE_CHAT_ACTION.icon}
+            </div>
+            <div className="mx-0.5 h-5 w-px bg-zinc-700" />
             {toolbarActions.map((action) => (
               <div
                 key={action.id}
