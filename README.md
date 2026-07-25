@@ -1,15 +1,13 @@
 # SelectMind AI
 
-**AI on any text — in the browser and on Windows.**
+**Chrome extension and Windows desktop app** — one AI core, two clients.
 
-Select text, run Explain / Translate / Summarize / custom actions from a floating toolbar, and keep chatting in a resizable popup. Same AI core in two shells:
+| Client | Platform | Use case |
+|--------|----------|----------|
+| **Chrome extension** | Manifest V3 | AI toolbar on any webpage, side panel, page context |
+| **Windows desktop app** | Tauri 2 | System-wide toolbar, OCR for games & images, tray + global hotkeys |
 
-| Platform | What it does |
-|----------|----------------|
-| **Chrome extension** (MV3) | Toolbar on web selections, side panel workspace, page context |
-| **Windows desktop** (Tauri 2) | System-wide selection toolbar, OCR for games & images, tray + global hotkeys |
-
-Connect your own provider (OpenAI, Anthropic, Gemini, Ollama, …). Keys stay local; requests go directly to the API you configure.
+Select text, run Explain / Translate / Summarize / custom actions from a floating toolbar, and keep chatting in a resizable popup. Connect your own provider (OpenAI, Anthropic, Gemini, Ollama, …). Keys stay local; requests go directly to the API you configure.
 
 ---
 

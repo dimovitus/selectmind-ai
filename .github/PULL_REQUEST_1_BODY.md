@@ -1,6 +1,8 @@
 ## Summary
 
-Monorepo refactor + **Windows desktop app** (Tauri 2) sharing the same AI core as the Chrome extension.
+**SelectMind AI** ships as a **Chrome extension** and a **Windows desktop app** — same `@selectmind/core`, different platform adapters.
+
+Monorepo refactor + Tauri 2 desktop shell sharing the AI core with the Chrome extension.
 
 - Extract `@selectmind/core` and `@selectmind/shared`; wire extension through platform adapters
 - Desktop: selection overlay (auto toolbar + popup), OCR toolbar/chat, system tray, SQLite, global hotkeys, NSIS packaging

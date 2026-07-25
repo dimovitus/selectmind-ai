@@ -1,7 +1,7 @@
 {
   "name": "selectmind-ai",
   "version": "0.1.0",
-  "description": "SelectMind AI — Chrome extension + Windows desktop app for AI on selected text, OCR, and chat",
+  "description": "SelectMind AI — Chrome extension (MV3) and Windows desktop app (Tauri 2) for AI on selected text, OCR, and chat",
   "private": true,
   "type": "module",
   "workspaces": [

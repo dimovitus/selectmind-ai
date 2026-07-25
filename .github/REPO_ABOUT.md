@@ -3,7 +3,7 @@
 **Description**
 
 ```
-Chrome extension + Windows desktop app — select text, run AI actions from a floating toolbar, OCR for games. Your providers, local keys.
+SelectMind AI — Chrome extension (MV3) and Windows desktop app (Tauri 2). Select text, run AI actions from a floating toolbar, OCR for games. Your providers, local keys.
 ```
 
 **Website** (optional)
