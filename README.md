@@ -1,8 +1,13 @@
 # SelectMind AI
 
-**Turn any webpage into an AI workspace.** Select text, get instant answers, and keep the conversation going — without leaving the page.
+**Chrome extension and Windows desktop app** — one AI core, two clients.
 
-SelectMind AI is a Chrome extension (Manifest V3) that puts a floating toolbar on text selection, opens a resizable chat popup, and offers a full side-panel workspace. Connect your own AI provider and work with page context automatically.
+| Client | Platform | Use case |
+|--------|----------|----------|
+| **Chrome extension** | Manifest V3 | AI toolbar on any webpage, side panel, page context |
+| **Windows desktop app** | Tauri 2 | System-wide toolbar, OCR for games & images, tray + global hotkeys |
+
+Select text, run Explain / Translate / Summarize / custom actions from a floating toolbar, and keep chatting in a resizable popup. Connect your own provider (OpenAI, Anthropic, Gemini, Ollama, …). Keys stay local; requests go directly to the API you configure.
 
 ---
 
@@ -44,10 +49,20 @@ SelectMind AI is a Chrome extension (Manifest V3) that puts a floating toolbar o
 | Provider | Notes |
 |----------|--------|
 | OpenAI | GPT-4o, GPT-4o mini, etc. |
-| Anthropic | Claude 3.5 / 3 |
+| Anthropic | Claude 3.5 / 4 |
 | Google Gemini | Gemini 1.5 / 2 |
+| Groq | Fast Llama / Mixtral inference |
+| Mistral AI | Mistral models |
+| DeepSeek | DeepSeek Chat / Reasoner |
+| xAI (Grok) | Grok models |
+| OpenRouter | 100+ models via one API key |
+| Together AI | Open-source model hosting |
+| Perplexity | Sonar search models |
+| Fireworks AI | Fast open-weight models |
 | Ollama | Local models |
-| OpenAI-compatible | Any custom base URL |
+| LM Studio | Local server (OpenAI-compatible) |
+| LocalAI | Self-hosted OpenAI-compatible API |
+| Custom | Any OpenAI-compatible base URL |
 
 Configure providers and API keys in **Extension options** after install.
 
@@ -88,19 +103,58 @@ npm run dev
 
 ---
 
+## Project structure
+
+```
+selectmind-ai/
+├── src/                 # Chrome extension (content, background, options, side panel)
+├── apps/desktop/        # Tauri 2 Windows app (overlay, OCR, tray, SQLite)
+├── packages/core/       # Domain, use cases, ports (shared by extension + desktop)
+├── packages/shared/     # Constants, i18n, hotkey helpers
+└── docs/                # Desktop porting plan, release checklist, store listing
+```
+
 ## Development
 
 | Command | Description |
 |---------|-------------|
-| `npm run dev` | Dev build with HMR |
-| `npm run build` | Production build to `dist/` |
-| `npm run test` | Unit tests (Vitest) |
+| `npm run dev` | Extension dev build with HMR |
+| `npm run build` | Extension production build → `dist/` |
+| `npm run desktop:dev` | Desktop app with hot reload |
+| `npm run desktop:package` | Windows NSIS installer (unsigned) |
+| `npm run test` | Unit tests (root + workspaces) |
+| `npm run desktop:test` | Desktop-only Vitest |
 | `npm run test:e2e` | E2E smoke tests (Playwright) |
 | `npm run lint` | ESLint |
 
-**Stack:** TypeScript, React, Vite, Tailwind, Zustand, React Query, Dexie, Framer Motion.
+**Stack:** TypeScript, React, Vite, Tailwind, Zustand, React Query, Dexie (extension), SQLite (desktop), Tauri 2 / Rust (desktop).
 
-Architecture follows a hexagonal layout: UI → use cases → domain → ports → adapters.
+Architecture: **UI → use cases → domain → ports → adapters** — extension and desktop each ship platform adapters for the same `@selectmind/core`.
+
+---
+
+## Desktop app (Windows)
+
+**Requirements:** Node.js 20+, Rust toolchain, Windows 10/11 x64
+
+```bash
+npm install
+npm run desktop:dev       # dev with hot reload
+npm run desktop:package   # NSIS installer → apps/desktop/src-tauri/target/release/bundle/nsis/
+```
+
+| Default hotkey | Action |
+|----------------|--------|
+| `Ctrl+Shift+Space` | Toolbar for selected text (clipboard fallback) |
+| `Ctrl+Shift+O` | OCR toolbar — region pick → popup actions (games, images) |
+| `Ctrl+Shift+X` | OCR chat — region pick → workspace chat |
+| `Ctrl+Shift+P` | Command palette |
+
+All hotkeys are configurable in **Settings → Keyboard shortcuts**.
+
+**Status:** Phases 0–5.1 complete · Phase 6 (signed installer + auto-update) in progress.
+
+Docs: [`DESKTOP_PORTING_PLAN.md`](docs/DESKTOP_PORTING_PLAN.md) · [`DESKTOP_RELEASE.md`](docs/DESKTOP_RELEASE.md) (smoke test) · [`DESKTOP_TOOLBAR.md`](docs/DESKTOP_TOOLBAR.md)
 
 ---
 

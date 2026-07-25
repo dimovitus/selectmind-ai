@@ -1,14 +1,9 @@
 import type { Conversation, Message } from '@/domain/conversation/conversation.schema';
 import type { ConversationId } from '@/domain/shared/ids';
+import type { ConversationRepositoryPort, MessageRepositoryPort } from '@selectmind/core';
 import { getDB } from '../indexeddb.adapter';
 
-export interface ConversationRepositoryPort {
-  getById(id: ConversationId): Promise<Conversation | null>;
-  save(conversation: Conversation): Promise<void>;
-  delete(id: ConversationId): Promise<void>;
-  deleteAll(): Promise<number>;
-  getRecent(limit: number): Promise<Conversation[]>;
-}
+export type { ConversationRepositoryPort, MessageRepositoryPort };
 
 export class ConversationRepository implements ConversationRepositoryPort {
   async getById(id: ConversationId): Promise<Conversation | null> {
@@ -34,7 +29,8 @@ export class ConversationRepository implements ConversationRepositoryPort {
   }
 
   async getRecent(limit: number): Promise<Conversation[]> {
-    return getDB().conversations.orderBy('updatedAt').reverse().limit(limit).toArray();
+    const all = await getDB().conversations.orderBy('updatedAt').reverse().limit(limit * 3).toArray();
+    return all.filter((c) => !c.ephemeral).slice(0, limit);
   }
 
   async deleteOlderThan(cutoff: number): Promise<number> {
@@ -44,16 +40,6 @@ export class ConversationRepository implements ConversationRepositoryPort {
     }
     return stale.length;
   }
-}
-
-export interface MessageRepositoryPort {
-  getByConversation(conversationId: ConversationId): Promise<Message[]>;
-  getByConversationPaginated(
-    conversationId: ConversationId,
-    options?: { limit?: number; before?: number },
-  ): Promise<{ messages: Message[]; hasMore: boolean }>;
-  save(message: Message): Promise<void>;
-  saveMany(messages: Message[]): Promise<void>;
 }
 
 export class MessageRepository implements MessageRepositoryPort {

@@ -1,5 +1,5 @@
 import type { ManifestV3Export } from '@crxjs/vite-plugin';
-import { PRODUCT_NAME } from './src/shared/constants/brand';
+import { PRODUCT_NAME } from './packages/shared/src/constants/brand';
 
 const manifest: ManifestV3Export = {
   manifest_version: 3,
@@ -44,6 +44,10 @@ const manifest: ManifestV3Export = {
     'toggle-sidepanel': {
       suggested_key: { default: 'Ctrl+Shift+S' },
       description: 'Toggle Side Panel',
+    },
+    'capture-screen': {
+      suggested_key: { default: 'Ctrl+Shift+X' },
+      description: 'Capture screen region for AI',
     },
   },
 };

@@ -3,6 +3,10 @@ import { AnimatePresence } from 'framer-motion';
 import type { Action } from '@/domain/action/action.schema';
 import type { ConversationId } from '@/domain/shared/ids';
 import type { PageContext } from '@/shared/types/page-context';
+import { pageContextToBundle } from '@/shared/types/page-context';
+import { FREE_CHAT_ACTION } from '@/shared/constants/free-chat';
+import { SCREENSHOT_ACTION_ID } from '@/shared/constants/screenshot-action';
+import { buildScreenshotPageContext, runScreenCaptureFlow } from '../screen-capture/run-capture-flow';
 import { rpcClient, pushListener } from '@/infrastructure/messaging/rpc-client';
 import { initSelectionListener, setSelectionHandler, setSelectionClearHandler, destroySelectionListener } from '../selection-listener';
 import { initHotkeyListener, destroyHotkeyListener, setHotkeyHandler } from '../hotkey-listener';
@@ -13,6 +17,7 @@ import { ChatPopup, chatStyles } from './ChatPopup';
 import { CommandPalette } from './CommandPalette';
 import type { SelectionRect } from '../selection-rect';
 import { getSelectionRect, captureRect } from '../selection-rect';
+import { rememberPageSelection } from '../page-context-extractor';
 import contentStyles from './content.css?inline';
 
 interface ActivePopup {
@@ -28,6 +33,8 @@ function ContentApp() {
   const [showToolbar, setShowToolbar] = useState(true);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const lastSelectionRef = useRef('');
+  const captureInProgressRef = useRef(false);
+  const saveConversationHistoryRef = useRef(true);
 
   useEffect(() => {
     pushListener.listen();
@@ -39,20 +46,14 @@ function ContentApp() {
   useEffect(() => {
     void rpcClient.call('settings:get', undefined).then((s) => {
       setShowToolbar(s.showFloatingToolbar);
+      saveConversationHistoryRef.current = s.saveConversationHistory;
     });
   }, []);
 
-  useEffect(() => {
-    const listener = (message: unknown) => {
-      if (typeof message !== 'object' || message === null) return;
-      const msg = message as Record<string, unknown>;
-      if (msg.type === 'saywa:open-palette') {
-        setPaletteOpen(true);
-        setToolbar(null);
-      }
-    };
-    chrome.runtime.onMessage.addListener(listener);
-    return () => chrome.runtime.onMessage.removeListener(listener);
+  const closePopup = useCallback((conversationId: ConversationId) => {
+    setPopup(null);
+    if (saveConversationHistoryRef.current) return;
+    void rpcClient.call('conversation:delete', { conversationId }).catch(() => {});
   }, []);
 
   const handleOpenWorkspace = useCallback((conversationId: string) => {
@@ -88,13 +89,78 @@ function ContentApp() {
     [handleOpenWorkspace],
   );
 
+  const openScreenshotChat = useCallback(async (options?: { target?: 'sidebar' | 'popup' }) => {
+    if (captureInProgressRef.current) return;
+
+    const target = options?.target ?? 'sidebar';
+    captureInProgressRef.current = true;
+    setToolbar(null);
+    setPaletteOpen(false);
+
+    try {
+      const screenshot = await runScreenCaptureFlow();
+      if (!screenshot) return;
+
+      const action = await rpcClient.call('action:get', { actionId: SCREENSHOT_ACTION_ID });
+      if (!action) return;
+
+      const context = await buildScreenshotPageContext(screenshot);
+      const result = await rpcClient.call('action:execute', { actionId: action.id, context });
+
+      if (target === 'sidebar') {
+        await rpcClient.call('conversation:promote', {
+          conversationId: result.conversationId,
+          mode: 'chat',
+        });
+        handleOpenWorkspace(result.conversationId);
+        return;
+      }
+
+      const rect = captureRect(
+        new DOMRect(
+          window.innerWidth / 2 - Math.min(220, screenshot.width / 2),
+          window.innerHeight / 3,
+          screenshot.width,
+          screenshot.height,
+        ),
+      );
+      handleActionResult(action, result.conversationId, rect);
+    } finally {
+      captureInProgressRef.current = false;
+      void chrome.runtime.sendMessage({ type: 'saywa:capture-screen:finished' }).catch(() => {});
+    }
+  }, [handleActionResult, handleOpenWorkspace]);
+
   const runAction = useCallback(
     async (action: Action, context: PageContext) => {
+      if (action.id === SCREENSHOT_ACTION_ID) {
+        await openScreenshotChat({ target: 'sidebar' });
+        return;
+      }
+
       const rect = getSelectionRect() ?? captureRect(new DOMRect(window.innerWidth / 2 - 160, window.innerHeight / 3, 0, 0));
       const result = await rpcClient.call('action:execute', { actionId: action.id, context });
       handleActionResult(action, result.conversationId, rect);
     },
-    [handleActionResult],
+    [handleActionResult, openScreenshotChat],
+  );
+
+  const openFreeChat = useCallback(
+    async (context: PageContext, rect: SelectionRect) => {
+      rememberPageSelection(context.selection);
+      const { conversationId } = await rpcClient.call('conversation:create', {
+        mode: 'chat',
+        contextBundle: pageContextToBundle(context),
+      });
+      setPopup({
+        action: FREE_CHAT_ACTION as Action,
+        conversationId,
+        rect,
+        mode: 'chat',
+      });
+      setToolbar(null);
+    },
+    [],
   );
 
   const handlePaletteExecute = useCallback(
@@ -126,6 +192,49 @@ function ContentApp() {
     },
     [runAction],
   );
+
+  useEffect(() => {
+    const listener = (message: unknown) => {
+      if (typeof message !== 'object' || message === null) return;
+      const msg = message as Record<string, unknown>;
+      if (msg.type === 'saywa:open-palette') {
+        setPaletteOpen(true);
+        setToolbar(null);
+        return;
+      }
+      if (msg.type === 'saywa:capture-screen') {
+        const target = msg.target === 'popup' ? 'popup' : 'sidebar';
+        void openScreenshotChat({ target });
+        return;
+      }
+      if (msg.type === 'saywa:context-menu-action' && typeof msg.actionId === 'string') {
+        const context = msg.context as PageContext | undefined;
+        if (context?.selection) {
+          rememberPageSelection(context.selection);
+        }
+        void (async () => {
+          const action = await rpcClient.call('action:get', {
+            actionId: msg.actionId as Action['id'],
+          });
+          if (!action) return;
+          const pageContext =
+            context ??
+            ({
+              selection: '',
+              pageTitle: document.title,
+              url: window.location.href,
+              hostname: window.location.hostname,
+              language: navigator.language,
+              date: new Date().toLocaleDateString(),
+              time: new Date().toLocaleTimeString(),
+            } satisfies PageContext);
+          await runAction(action, pageContext);
+        })();
+      }
+    };
+    chrome.runtime.onMessage.addListener(listener);
+    return () => chrome.runtime.onMessage.removeListener(listener);
+  }, [runAction, openScreenshotChat]);
 
   useEffect(() => {
     setHotkeyHandler((action, context) => {
@@ -171,6 +280,7 @@ function ContentApp() {
           rect={toolbar.rect}
           onClose={() => setToolbar(null)}
           onActionResult={handleActionResult}
+          onOpenFreeChat={(context, rect) => void openFreeChat(context, rect)}
         />
       )}
       <CommandPalette
@@ -185,7 +295,7 @@ function ContentApp() {
             action={popup.action}
             conversationId={popup.conversationId}
             rect={popup.rect}
-            onClose={() => setPopup(null)}
+            onClose={() => closePopup(popup.conversationId)}
             onContinueChat={() => {
               void rpcClient
                 .call('conversation:promote', { conversationId: popup.conversationId, mode: 'chat' })
@@ -199,7 +309,7 @@ function ContentApp() {
             action={popup.action}
             conversationId={popup.conversationId}
             rect={popup.rect}
-            onClose={() => setPopup(null)}
+            onClose={() => closePopup(popup.conversationId)}
             onOpenWorkspace={() => handleOpenWorkspace(popup.conversationId)}
           />
         )}

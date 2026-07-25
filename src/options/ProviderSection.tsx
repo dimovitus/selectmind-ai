@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { ProviderConfig } from '@/domain/provider/provider.schema';
 import { rpcClient } from '@/infrastructure/messaging/rpc-client';
+import { sortProvidersByBuiltinOrder } from '@/shared/constants/default-providers';
 import { Button } from '@/presentation/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/presentation/components/ui/card';
 
@@ -103,7 +104,9 @@ export function ProviderCard({ provider }: ProviderCardProps) {
         <div className="mt-3 space-y-3 border-t pt-3">
           <div>
             <label className="text-xs text-muted-foreground">
-              {provider.type === 'local' ? 'API Key (optional for Ollama)' : 'API Key'}
+              {provider.type === 'local'
+                ? 'API Key (optional for local servers)'
+                : 'API Key'}
             </label>
             <input
               type="password"
@@ -155,16 +158,18 @@ interface ProviderSectionProps {
 }
 
 export function ProviderSection({ providers }: ProviderSectionProps) {
+  const sorted = sortProvidersByBuiltinOrder(providers);
+
   return (
     <Card>
       <CardHeader>
         <CardTitle>AI Providers</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
-        {providers.length === 0 ? (
+        {sorted.length === 0 ? (
           <p className="text-sm text-muted-foreground">No providers configured.</p>
         ) : (
-          providers.map((provider) => (
+          sorted.map((provider) => (
             <ProviderCard key={provider.id} provider={provider} />
           ))
         )}

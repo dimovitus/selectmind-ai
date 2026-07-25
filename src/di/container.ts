@@ -1,3 +1,9 @@
+import type { PlatformPorts } from '@selectmind/core';
+import {
+  AIRouter,
+  RunPipelineUseCase,
+  StreamConversationUseCase,
+} from '@selectmind/core';
 import { ActionRepository, CategoryRepository } from '@/infrastructure/storage/repositories/action.repository';
 import {
   ConversationRepository,
@@ -9,11 +15,11 @@ import {
 } from '@/infrastructure/storage/repositories/settings.repository';
 import { RpcServer } from '@/infrastructure/messaging/rpc-client';
 import { PipelineRepository } from '@/infrastructure/storage/repositories/pipeline.repository';
-import { StreamConversationUseCase } from '@/application/stream-conversation.use-case';
-import { RunPipelineUseCase } from '@/application/run-pipeline.use-case';
-import { AIRouter } from '@/infrastructure/ai/ai-router';
+import { ChromeStreamEventsAdapter } from '@/platform/extension/chrome-stream-events.adapter';
+import { createExtensionPlatform } from '@/platform/extension';
 
 export interface AppContainer {
+  platform: PlatformPorts;
   actionRepo: ActionRepository;
   categoryRepo: CategoryRepository;
   conversationRepo: ConversationRepository;
@@ -29,17 +35,19 @@ export interface AppContainer {
 
 let container: AppContainer | null = null;
 
-export function createContainer(): AppContainer {
+export function createContainer(platform: PlatformPorts = createExtensionPlatform()): AppContainer {
   const actionRepo = new ActionRepository();
   const categoryRepo = new CategoryRepository();
   const conversationRepo = new ConversationRepository();
   const messageRepo = new MessageRepository();
   const providerRepo = new ProviderRepository();
-  const settingsRepo = new SettingsRepository();
+  const settingsRepo = new SettingsRepository(platform.settings);
   const pipelineRepo = new PipelineRepository();
   const aiRouter = new AIRouter();
+  const streamEvents = new ChromeStreamEventsAdapter();
 
   return {
+    platform,
     actionRepo,
     categoryRepo,
     conversationRepo,
@@ -52,7 +60,9 @@ export function createContainer(): AppContainer {
       conversationRepo,
       messageRepo,
       providerRepo,
-      settingsRepo,
+      platform.settings,
+      streamEvents,
+      aiRouter,
     ),
     runPipeline: new RunPipelineUseCase(
       pipelineRepo,
@@ -60,7 +70,9 @@ export function createContainer(): AppContainer {
       conversationRepo,
       messageRepo,
       providerRepo,
-      settingsRepo,
+      platform.settings,
+      streamEvents,
+      aiRouter,
     ),
     aiRouter,
   };

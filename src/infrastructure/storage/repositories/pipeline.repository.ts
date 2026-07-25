@@ -1,14 +1,9 @@
 import type { Pipeline } from '@/domain/provider/provider.schema';
 import type { PipelineId } from '@/domain/shared/ids';
+import type { PipelineRepositoryPort } from '@selectmind/core';
 import { getDB } from '../indexeddb.adapter';
 
-export interface PipelineRepositoryPort {
-  getAll(): Promise<Pipeline[]>;
-  getById(id: PipelineId): Promise<Pipeline | null>;
-  save(pipeline: Pipeline): Promise<void>;
-  saveMany(pipelines: Pipeline[]): Promise<void>;
-  delete(id: PipelineId): Promise<void>;
-}
+export type { PipelineRepositoryPort };
 
 export class PipelineRepository implements PipelineRepositoryPort {
   async getAll(): Promise<Pipeline[]> {

@@ -1,0 +1,14 @@
+{
+  "name": "@selectmind/shared",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Shared constants, types, and utilities for SelectMind",
+  "exports": {
+    ".": "./src/index.ts",
+    "./*": "./src/*"
+  },
+  "dependencies": {
+    "@selectmind/core": "file:../core"
+  }
+}

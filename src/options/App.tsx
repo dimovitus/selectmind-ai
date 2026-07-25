@@ -1,9 +1,12 @@
 import { useState } from 'react';
-import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from '@tanstack/react-query';
+import type { Action } from '@/domain/action/action.schema';
+import type { ActionId } from '@/domain/shared/ids';
 import { rpcClient } from '@/infrastructure/messaging/rpc-client';
 import { useTheme } from '@/presentation/hooks/useTheme';
 import { ProviderSection } from './ProviderSection';
 import { ActionsSection } from './ActionsSection';
+import { ActionEditor } from './ActionEditor';
 import { CategoryManager } from './CategoryManager';
 import { ToolbarCustomizer } from './ToolbarCustomizer';
 import { GeneralSettings } from './GeneralSettings';
@@ -11,6 +14,7 @@ import { PipelinesSection } from './PipelinesSection';
 import { ImportExportSection } from './ImportExportSection';
 import { OnboardingWizard } from './OnboardingWizard';
 import { PRODUCT_NAME } from '@/shared/constants/brand';
+import type { CustomActionTemplate } from '@/shared/constants/custom-action-templates';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -19,6 +23,16 @@ const queryClient = new QueryClient({
 });
 
 type Tab = 'general' | 'providers' | 'actions' | 'toolbar' | 'categories' | 'pipelines' | 'backup';
+
+type EditorState =
+  | null
+  | {
+      mode: 'new';
+      template?: CustomActionTemplate;
+      addToToolbar?: boolean;
+    }
+  | { mode: 'edit'; action: Action }
+  | { mode: 'duplicate'; action: Action; addToToolbar?: boolean };
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: 'general', label: 'General', icon: '⚙️' },
@@ -33,20 +47,23 @@ const TABS: { id: Tab; label: string; icon: string }[] = [
 function OptionsContent() {
   const [tab, setTab] = useState<Tab>('general');
   const [showOnboarding, setShowOnboarding] = useState(true);
+  const [editor, setEditor] = useState<EditorState>(null);
+  const queryClient = useQueryClient();
+
+  const { data: settings, isError: settingsError } = useQuery({
+    queryKey: ['settings'],
+    queryFn: () => rpcClient.call('settings:get', undefined),
+  });
 
   const { data: actions = [] } = useQuery({
-    queryKey: ['actions'],
+    queryKey: ['actions', settings?.responseLanguage ?? 'auto'],
     queryFn: () => rpcClient.call('action:list', undefined),
+    enabled: !!settings,
   });
 
   const { data: categories = [] } = useQuery({
     queryKey: ['categories'],
     queryFn: () => rpcClient.call('category:list', undefined),
-  });
-
-  const { data: settings, isError: settingsError } = useQuery({
-    queryKey: ['settings'],
-    queryFn: () => rpcClient.call('settings:get', undefined),
   });
 
   const { data: providers = [] } = useQuery({
@@ -81,6 +98,26 @@ function OptionsContent() {
   }
 
   const needsOnboarding = showOnboarding && !settings.onboardingCompleted;
+
+  const handleActionSaved = async (saved: Action) => {
+    if (!editor || editor.mode === 'edit') return;
+    if (!editor.addToToolbar) return;
+
+    const effectiveToolbarIds =
+      settings.toolbarActionIds.length > 0
+        ? settings.toolbarActionIds
+        : actions
+            .filter((a) => a.isEnabled)
+            .sort((a, b) => a.order - b.order)
+            .map((a) => a.id);
+
+    if (effectiveToolbarIds.includes(saved.id)) return;
+
+    await rpcClient.call('settings:update', {
+      toolbarActionIds: [...effectiveToolbarIds, saved.id as ActionId],
+    });
+    void queryClient.invalidateQueries({ queryKey: ['settings'] });
+  };
 
   return (
     <div className="min-h-screen">
@@ -129,10 +166,20 @@ function OptionsContent() {
           <ProviderSection providers={providers} />
         )}
         {tab === 'actions' && (
-          <ActionsSection actions={actions} categories={categories} providers={providers} />
+          <ActionsSection
+            actions={actions}
+            categories={categories}
+            onCreateCustom={() => setEditor({ mode: 'new' })}
+            onEditAction={(action) => setEditor({ mode: 'edit', action })}
+            onDuplicateAction={(action) => setEditor({ mode: 'duplicate', action })}
+          />
         )}
         {tab === 'toolbar' && (
-          <ToolbarCustomizer actions={actions} settings={settings} />
+          <ToolbarCustomizer
+            actions={actions}
+            settings={settings}
+            onCreateCustom={() => setEditor({ mode: 'new', addToToolbar: true })}
+          />
         )}
         {tab === 'categories' && (
           <CategoryManager categories={categories} />
@@ -140,6 +187,18 @@ function OptionsContent() {
         {tab === 'pipelines' && <PipelinesSection />}
         {tab === 'backup' && <ImportExportSection />}
       </main>
+
+      {editor && (
+        <ActionEditor
+          action={editor.mode === 'edit' ? editor.action : null}
+          duplicateFrom={editor.mode === 'duplicate' ? editor.action : null}
+          template={editor.mode === 'new' ? editor.template ?? null : null}
+          categories={categories}
+          providers={providers}
+          onClose={() => setEditor(null)}
+          onSaved={(saved) => void handleActionSaved(saved)}
+        />
+      )}
     </div>
   );
 }

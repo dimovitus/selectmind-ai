@@ -1,0 +1,15 @@
+{
+  "name": "@selectmind/core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Platform-agnostic domain, ports, and types for SelectMind",
+  "exports": {
+    ".": "./src/index.ts",
+    "./domain/*": "./src/domain/*"
+  },
+  "dependencies": {
+    "nanoid": "^5.1.5",
+    "zod": "^3.25.76"
+  }
+}

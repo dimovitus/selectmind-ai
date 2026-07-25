@@ -1,71 +1,56 @@
+import sharp from 'sharp';
 import { writeFileSync, mkdirSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { deflateSync } from 'zlib';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const outDir = join(__dirname, '../assets/icons');
 mkdirSync(outDir, { recursive: true });
 
-function crc32(buf) {
-  let crc = 0xffffffff;
-  for (let i = 0; i < buf.length; i++) {
-    crc ^= buf[i];
-    for (let j = 0; j < 8; j++) {
-      crc = crc & 1 ? (crc >>> 1) ^ 0xedb88320 : crc >>> 1;
-    }
-  }
-  return (crc ^ 0xffffffff) >>> 0;
+const SIZES = [16, 32, 48, 128];
+
+/** @param {number} size */
+function buildSvg(size) {
+  const rx = Math.round(size * 0.22);
+  const fontSize = size <= 16 ? 9 : Math.round(size * 0.41);
+  const y = Math.round(size * 0.58);
+  const letterSpacing = size >= 48 ? -3 : size >= 32 ? -2 : -1;
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+  <defs>
+    <linearGradient id="bg" x1="8%" y1="6%" x2="92%" y2="94%">
+      <stop offset="0%" stop-color="#a855f7"/>
+      <stop offset="48%" stop-color="#6366f1"/>
+      <stop offset="100%" stop-color="#06b6d4"/>
+    </linearGradient>
+    <linearGradient id="shine" x1="50%" y1="0%" x2="50%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.32"/>
+      <stop offset="45%" stop-color="#ffffff" stop-opacity="0.06"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="textGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="${Math.max(1, Math.round(size * 0.02))}" stdDeviation="${Math.max(0.5, size * 0.015)}" flood-color="#312e81" flood-opacity="0.45"/>
+    </filter>
+  </defs>
+  <rect width="${size}" height="${size}" rx="${rx}" fill="url(#bg)"/>
+  <rect width="${size}" height="${size}" rx="${rx}" fill="url(#shine)"/>
+  <text
+    x="50%"
+    y="${y}"
+    text-anchor="middle"
+    dominant-baseline="middle"
+    font-family="Segoe UI, system-ui, -apple-system, BlinkMacSystemFont, Arial, sans-serif"
+    font-size="${fontSize}"
+    font-weight="800"
+    fill="#ffffff"
+    letter-spacing="${letterSpacing}"
+    filter="url(#textGlow)"
+  >SM</text>
+</svg>`;
 }
 
-function chunk(type, data) {
-  const len = Buffer.alloc(4);
-  len.writeUInt32BE(data.length);
-  const typeBuf = Buffer.from(type);
-  const combined = Buffer.concat([typeBuf, data]);
-  const crc = Buffer.alloc(4);
-  crc.writeUInt32BE(crc32(combined));
-  return Buffer.concat([len, combined, crc]);
-}
-
-function createPng(size, r, g, b) {
-  const signature = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
-  const ihdr = Buffer.alloc(13);
-  ihdr.writeUInt32BE(size, 0);
-  ihdr.writeUInt32BE(size, 4);
-  ihdr[8] = 8;
-  ihdr[9] = 2;
-  ihdr[10] = 0;
-  ihdr[11] = 0;
-  ihdr[12] = 0;
-
-  const rowSize = 1 + size * 3;
-  const raw = Buffer.alloc(rowSize * size);
-  for (let y = 0; y < size; y++) {
-    raw[y * rowSize] = 0;
-    for (let x = 0; x < size; x++) {
-      const cx = x - size / 2;
-      const cy = y - size / 2;
-      const dist = Math.sqrt(cx * cx + cy * cy);
-      const inCircle = dist < size * 0.38;
-      const idx = y * rowSize + 1 + x * 3;
-      raw[idx] = inCircle ? r : 24;
-      raw[idx + 1] = inCircle ? g : 24;
-      raw[idx + 2] = inCircle ? b : 27;
-    }
-  }
-
-  const compressed = deflateSync(raw);
-  return Buffer.concat([
-    signature,
-    chunk('IHDR', ihdr),
-    chunk('IDAT', compressed),
-    chunk('IEND', Buffer.alloc(0)),
-  ]);
-}
-
-for (const size of [16, 32, 48, 128]) {
-  const png = createPng(size, 139, 92, 246);
+for (const size of SIZES) {
+  const png = await sharp(Buffer.from(buildSvg(size))).png().toBuffer();
   writeFileSync(join(outDir, `icon-${size}.png`), png);
   console.log(`Created icon-${size}.png`);
 }
