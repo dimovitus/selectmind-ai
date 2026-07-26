@@ -1,7 +1,11 @@
 mod capture;
+mod argos_sidecar;
+mod live;
+mod models;
 mod ocr;
 mod secrets;
 mod selection;
+mod translate;
 mod tray;
 
 use capture::{
@@ -46,6 +50,19 @@ pub fn run() {
             selection_foreground_window_id,
             selection_show_toolbar,
             selection_trigger_manual_toolbar,
+            live_is_available,
+            live_set_region,
+            live_get_region,
+            live_clear_region,
+            live_scan,
+            translate_batch,
+            translate_ping_local,
+            argos_sidecar_ping,
+            argos_sidecar_status,
+            models_list,
+            models_status,
+            models_download,
+            models_delete,
             app_exit,
             tray_is_ready,
         ])
@@ -191,7 +208,73 @@ fn selection_trigger_manual_toolbar(app: tauri::AppHandle) {
 }
 
 #[tauri::command]
+fn live_is_available() -> bool {
+    live::is_available()
+}
+
+#[tauri::command]
+fn live_set_region(region: live::LiveRegion) {
+    live::set_region(region);
+}
+
+#[tauri::command]
+fn live_get_region() -> Option<live::LiveRegion> {
+    live::get_region()
+}
+
+#[tauri::command]
+fn live_clear_region() {
+    live::clear_region();
+}
+
+#[tauri::command]
+fn live_scan() -> Result<live::LiveScanResult, String> {
+    live::scan_region()
+}
+
+#[tauri::command]
+fn translate_batch(args: translate::TranslateBatchArgs) -> Result<translate::TranslateBatchResult, String> {
+    translate::translate_batch(args)
+}
+
+#[tauri::command]
+fn translate_ping_local(base_url: Option<String>) -> Result<String, String> {
+    translate::ping_local_libretranslate(base_url)
+}
+
+#[tauri::command]
+fn argos_sidecar_ping() -> Result<String, String> {
+    argos_sidecar::ping()
+}
+
+#[tauri::command]
+fn argos_sidecar_status() -> Result<argos_sidecar::ArgosSidecarStatus, String> {
+    argos_sidecar::sidecar_status()
+}
+
+#[tauri::command]
+fn models_list() -> Result<models::ModelsListResult, String> {
+    models::list_models()
+}
+
+#[tauri::command]
+fn models_status(model_id: String) -> Result<models::ModelStatus, String> {
+    models::model_status(&model_id)
+}
+
+#[tauri::command]
+fn models_download(app: tauri::AppHandle, model_id: String) -> Result<models::ModelStatus, String> {
+    models::download_model(app, model_id)
+}
+
+#[tauri::command]
+fn models_delete(model_id: String) -> Result<(), String> {
+    models::delete_model(model_id)
+}
+
+#[tauri::command]
 fn app_exit() {
+    argos_sidecar::shutdown();
     std::process::exit(0);
 }
 

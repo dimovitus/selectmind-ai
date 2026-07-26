@@ -5,7 +5,7 @@
 | Client | Platform | Use case |
 |--------|----------|----------|
 | **Chrome extension** | Manifest V3 | AI toolbar on any webpage, side panel, page context |
-| **Windows desktop app** | Tauri 2 | System-wide toolbar, OCR for games & images, tray + global hotkeys |
+| **Windows desktop app** | Tauri 2 | System-wide toolbar, OCR, **live game translate**, tray + global hotkeys |
 
 Select text, run Explain / Translate / Summarize / custom actions from a floating toolbar, and keep chatting in a resizable popup. Connect your own provider (OpenAI, Anthropic, Gemini, Ollama, …). Keys stay local; requests go directly to the API you configure.
 
@@ -149,10 +149,30 @@ npm run desktop:package   # NSIS installer → apps/desktop/src-tauri/target/rel
 | `Ctrl+Shift+O` | OCR toolbar — region pick → popup actions (games, images) |
 | `Ctrl+Shift+X` | OCR chat — region pick → workspace chat |
 | `Ctrl+Shift+P` | Command palette |
+| `Ctrl+Shift+L` | **Live game translate** — OCR overlay for games (v0.2) |
+| `Ctrl+Shift+Left` / `Right` | Cycle saved live-translate regions |
 
 All hotkeys are configurable in **Settings → Keyboard shortcuts**.
 
-**Status:** Phases 0–5.1 complete · Phase 6 (signed installer + auto-update) in progress.
+### Live game translate (v0.2)
+
+Real-time subtitle/dialog translation overlay for games:
+
+1. **Settings → Live game translate** — pick engine, languages, region
+2. `Ctrl+Shift+L` → draw region over subtitles
+3. Translated text appears on top of the game (click-through)
+
+| Engine | Key required |
+|--------|----------------|
+| Google / Bing (free) | No — default online |
+| Lingva proxy | No |
+| LibreTranslate (localhost) | No — run server yourself |
+| Offline Argos NMT | No — download ~100 MB model |
+| AI provider | Yes — optional |
+
+Docs: [`docs/DESKTOP_LIVE_TRANSLATE.md`](docs/DESKTOP_LIVE_TRANSLATE.md) · offline sidecar: [`apps/desktop/sidecar/README.md`](apps/desktop/sidecar/README.md)
+
+**Desktop v0.2.0** — live translate + offline Argos · **Extension v0.1.0** unchanged.
 
 Docs: [`DESKTOP_PORTING_PLAN.md`](docs/DESKTOP_PORTING_PLAN.md) · [`DESKTOP_RELEASE.md`](docs/DESKTOP_RELEASE.md) (smoke test) · [`DESKTOP_TOOLBAR.md`](docs/DESKTOP_TOOLBAR.md)
 

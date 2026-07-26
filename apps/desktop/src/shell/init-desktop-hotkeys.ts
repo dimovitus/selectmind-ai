@@ -10,6 +10,7 @@ import {
 } from '../settings/desktop-hotkeys';
 
 import { openDesktopCommandPalette } from './init-command-palette-hotkey';
+import { registerLiveTranslateHotkey } from '../live/init-live-translate';
 
 export interface DesktopHotkeyHandlers {
   onOcrCapture: () => void;
@@ -70,6 +71,8 @@ export async function syncDesktopHotkeys(): Promise<void> {
       void invoke('selection_trigger_manual_toolbar');
     },
   );
+
+  await registerLiveTranslateHotkey();
 }
 
 export async function initDesktopHotkeys(next: DesktopHotkeyHandlers): Promise<void> {

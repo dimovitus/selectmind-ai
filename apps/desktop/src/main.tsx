@@ -4,6 +4,7 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
 import { App } from './App';
 import { CaptureOverlayApp } from './capture/RegionPickerOverlay';
 import { SelectionOverlayApp } from './selection/SelectionOverlayApp';
+import { LiveOverlayApp } from './live/LiveOverlayApp';
 import './app.css';
 
 async function bootstrap() {
@@ -16,6 +17,8 @@ async function bootstrap() {
     content = <CaptureOverlayApp />;
   } else if (label === 'selection-overlay' || overlay === 'selection') {
     content = <SelectionOverlayApp />;
+  } else if (label === 'live-overlay' || overlay === 'live') {
+    content = <LiveOverlayApp />;
   }
 
   createRoot(document.getElementById('root')!).render(<StrictMode>{content}</StrictMode>);
