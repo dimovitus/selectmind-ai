@@ -30,12 +30,18 @@ import { initDesktopHotkeys, syncDesktopHotkeys } from './shell/init-desktop-hot
 import {
   formatAcceleratorDisplay,
   getHotkeyAccelerator,
+  LIVE_TRANSLATE_HOTKEY_ID,
   OCR_CAPTURE_HOTKEY_ID,
   OCR_TOOLBAR_HOTKEY_ID,
   PALETTE_HOTKEY_ID,
   SELECTION_TOOLBAR_HOTKEY_ID,
   subscribeHotkeySettings,
 } from './settings/desktop-hotkeys';
+import {
+  getLiveTranslateError,
+  isLiveTranslateActive,
+  toggleLiveTranslate,
+} from './live/live-controller';
 import { DesktopCommandPalette, type PaletteItem } from './shell/DesktopCommandPalette';
 import { formatUnknownError } from './capture/capture-utils';
 import '@/presentation/components/chat/chat.css';
@@ -53,6 +59,7 @@ function WorkspaceInner() {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [ocrBusy, setOcrBusy] = useState(false);
   const [ocrToolbarBusy, setOcrToolbarBusy] = useState(false);
+  const [liveTranslateActive, setLiveTranslateActive] = useState(false);
   const [ocrError, setOcrError] = useState<string | null>(null);
   const [, setHotkeyRevision] = useState(0);
   const ocrTargetRef = useRef<ConversationId | null>(null);
@@ -68,6 +75,9 @@ function WorkspaceInner() {
   const paletteHotkey = formatAcceleratorDisplay(getHotkeyAccelerator(PALETTE_HOTKEY_ID));
   const selectionToolbarHotkey = formatAcceleratorDisplay(
     getHotkeyAccelerator(SELECTION_TOOLBAR_HOTKEY_ID),
+  );
+  const liveTranslateHotkey = formatAcceleratorDisplay(
+    getHotkeyAccelerator(LIVE_TRANSLATE_HOTKEY_ID),
   );
   const ocrButtonTitle = `Capture a screen region and explain it with AI (${ocrCaptureHotkey})`;
   const ocrToolbarButtonTitle = `OCR a screen region and open the action toolbar (${ocrToolbarHotkey})`;
@@ -282,6 +292,20 @@ function WorkspaceInner() {
     }
   }, [screenPickBusy]);
 
+  const handleLiveTranslateToggle = useCallback(async () => {
+    if (screenPickBusy) return;
+    setOcrError(null);
+    try {
+      const active = await toggleLiveTranslate(false);
+      setLiveTranslateActive(active);
+      const error = getLiveTranslateError();
+      if (error) setOcrError(error);
+    } catch (error) {
+      setOcrError(formatUnknownError(error, 'Live translate failed'));
+      setLiveTranslateActive(isLiveTranslateActive());
+    }
+  }, [screenPickBusy]);
+
   const clearAllMutation = useMutation({
     mutationFn: () => rpcClient.call('conversation:clear-all', undefined),
     onSuccess: () => {
@@ -378,6 +402,15 @@ function WorkspaceInner() {
                 onClick={() => setPaletteOpen(true)}
               >
                 Palette
+              </Button>
+              <Button
+                variant={liveTranslateActive ? 'secondary' : 'outline'}
+                size="sm"
+                title={`Toggle live game translation overlay (${liveTranslateHotkey})`}
+                disabled={screenPickBusy || startingChat}
+                onClick={() => void handleLiveTranslateToggle()}
+              >
+                {liveTranslateActive ? '⏹ Live translate' : '🎮 Live translate'}
               </Button>
               <Button
                 variant="outline"

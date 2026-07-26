@@ -4,12 +4,18 @@ export const OCR_CAPTURE_HOTKEY_ID = 'desktop-ocr-capture';
 export const OCR_TOOLBAR_HOTKEY_ID = 'desktop-ocr-toolbar';
 export const PALETTE_HOTKEY_ID = 'desktop-command-palette';
 export const SELECTION_TOOLBAR_HOTKEY_ID = 'desktop-selection-toolbar';
+export const LIVE_TRANSLATE_HOTKEY_ID = 'desktop-live-translate';
+export const LIVE_REGION_PREV_HOTKEY_ID = 'desktop-live-region-prev';
+export const LIVE_REGION_NEXT_HOTKEY_ID = 'desktop-live-region-next';
 
 export type DesktopHotkeyId =
   | typeof OCR_CAPTURE_HOTKEY_ID
   | typeof OCR_TOOLBAR_HOTKEY_ID
   | typeof PALETTE_HOTKEY_ID
-  | typeof SELECTION_TOOLBAR_HOTKEY_ID;
+  | typeof SELECTION_TOOLBAR_HOTKEY_ID
+  | typeof LIVE_TRANSLATE_HOTKEY_ID
+  | typeof LIVE_REGION_PREV_HOTKEY_ID
+  | typeof LIVE_REGION_NEXT_HOTKEY_ID;
 
 export interface DesktopHotkeyDefinition {
   id: DesktopHotkeyId;
@@ -42,6 +48,24 @@ export const DESKTOP_HOTKEY_DEFINITIONS: DesktopHotkeyDefinition[] = [
     defaultAccelerator: 'Ctrl+Shift+Space',
     label: 'Selection toolbar',
     description: 'Copy selected text and show the action toolbar (any app)',
+  },
+  {
+    id: LIVE_TRANSLATE_HOTKEY_ID,
+    defaultAccelerator: 'Ctrl+Shift+L',
+    label: 'Live game translate',
+    description: 'Toggle live OCR translation overlay for games (killer feature)',
+  },
+  {
+    id: LIVE_REGION_PREV_HOTKEY_ID,
+    defaultAccelerator: 'Ctrl+Shift+Left',
+    label: 'Previous live region',
+    description: 'Switch to the previous saved live translate capture region',
+  },
+  {
+    id: LIVE_REGION_NEXT_HOTKEY_ID,
+    defaultAccelerator: 'Ctrl+Shift+Right',
+    label: 'Next live region',
+    description: 'Switch to the next saved live translate capture region',
   },
 ];
 

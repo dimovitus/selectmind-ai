@@ -41,7 +41,7 @@ Unsigned builds trigger **Windows SmartScreen** (“Unknown publisher”) on fir
 ```powershell
 signtool sign /fd sha256 /tr http://timestamp.digicert.com /td sha256 `
   /f "path\to\cert.pfx" /p "password" `
-  "apps\desktop\src-tauri\target\release\bundle\nsis\SelectMind AI_0.1.0_x64-setup.exe"
+  "apps\desktop\src-tauri\target\release\bundle\nsis\SelectMind AI_0.2.0_x64-setup.exe"
 ```
 
 Tauri updater keys: `TAURI_SIGNING_PRIVATE_KEY`, `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`
@@ -107,5 +107,18 @@ Run after install or `npm run desktop:dev`.
 | 17 | Settings → Keyboard shortcuts → change binding → works immediately | ☐ |
 | 18 | Settings → Toolbar → customize icons → reflected in overlay | ☐ |
 | 19 | Import/export backup round-trip | ☐ |
+
+### Live game translate (v0.2)
+
+| # | Check | Pass |
+|---|--------|:----:|
+| 20 | `Ctrl+Shift+L` → pick region → overlay shows translated lines | ☐ |
+| 21 | Engine badge visible (Google / Offline / …) | ☐ |
+| 22 | `Ctrl+Shift+Right` cycles saved regions | ☐ |
+| 23 | Offline: model downloaded → Test offline engine → Offline NMT works | ☐ |
+| 24 | Auto-fallback: disable sidecar/model → online fallback or error in overlay | ☐ |
+| 25 | Clear translation cache → count resets in Settings | ☐ |
+
+See [DESKTOP_LIVE_TRANSLATE.md](./DESKTOP_LIVE_TRANSLATE.md) for engine setup and gaming checklist.
 
 See also [DESKTOP_CAPTURE.md](./DESKTOP_CAPTURE.md) for gaming / anti-cheat notes.

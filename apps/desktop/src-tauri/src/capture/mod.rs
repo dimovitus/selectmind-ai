@@ -139,3 +139,33 @@ pub fn capture_primary_monitor_region(
     let origin_y = monitor.y().map_err(|error| error.to_string())?;
     capture_monitor_region(origin_x, origin_y, x, y, width, height, scale_factor)
 }
+
+/// Raw RGBA pixels for live translate (no PNG/base64 round-trip).
+pub fn capture_monitor_region_rgba(
+    monitor_origin_x: i32,
+    monitor_origin_y: i32,
+    x: u32,
+    y: u32,
+    width: u32,
+    height: u32,
+    scale_factor: f64,
+) -> Result<(Vec<u8>, u32, u32), String> {
+    if width == 0 || height == 0 {
+        return Err("Capture region must be non-empty".to_string());
+    }
+
+    let monitor = monitor_at_origin(monitor_origin_x, monitor_origin_y)?;
+    let scale = if scale_factor > 0.0 { scale_factor } else { 1.0 };
+
+    let physical_x = ((x as f64) * scale).round().max(0.0) as u32;
+    let physical_y = ((y as f64) * scale).round().max(0.0) as u32;
+    let physical_width = ((width as f64) * scale).round().max(1.0) as u32;
+    let physical_height = ((height as f64) * scale).round().max(1.0) as u32;
+
+    let image = monitor
+        .capture_region(physical_x, physical_y, physical_width, physical_height)
+        .map_err(|error| error.to_string())?;
+
+    let (w, h) = image.dimensions();
+    Ok((image.into_raw(), w, h))
+}

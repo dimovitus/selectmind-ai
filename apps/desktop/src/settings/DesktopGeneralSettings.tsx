@@ -11,6 +11,7 @@ import {
   type ResponseLanguageCode,
 } from '@/shared/constants/response-languages';
 import { SupportSection } from '@/options/SupportSection';
+import { DesktopLiveTranslateSettings } from './DesktopLiveTranslateSettings';
 import { Button } from '@/presentation/components/ui/button';
 import {
   DESKTOP_HOTKEY_DEFINITIONS,
@@ -375,6 +376,8 @@ export function DesktopGeneralSettings({ settings, providers }: DesktopGeneralSe
           </p>
         </CardContent>
       </Card>
+
+      <DesktopLiveTranslateSettings />
 
       <SupportSection />
     </div>

@@ -2,7 +2,7 @@
   "$schema": "../node_modules/@tauri-apps/cli/capabilities.schema.json",
   "identifier": "default",
   "description": "Default capabilities for SelectMind desktop skeleton",
-  "windows": ["main", "capture-overlay", "selection-overlay"],
+  "windows": ["main", "capture-overlay", "selection-overlay", "live-overlay"],
   "permissions": [
     "core:default",
     "core:window:allow-show",
@@ -13,6 +13,7 @@
     "core:window:allow-is-minimized",
     "core:window:allow-set-skip-taskbar",
     "core:window:allow-set-focusable",
+    "core:window:allow-set-ignore-cursor-events",
     "core:path:default",
     "core:image:default",
     "core:window:allow-set-position",

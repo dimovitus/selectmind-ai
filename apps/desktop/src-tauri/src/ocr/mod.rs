@@ -1,6 +1,9 @@
 #[cfg(windows)]
 mod win;
 
+#[cfg(windows)]
+pub mod lines;
+
 pub fn recognize_image_data_url(data_url: &str) -> Result<String, String> {
     #[cfg(windows)]
     {
