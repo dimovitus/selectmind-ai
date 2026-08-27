@@ -13,6 +13,7 @@ import {
 import { SupportSection } from '@/options/SupportSection';
 import { DesktopLiveTranslateSettings } from './DesktopLiveTranslateSettings';
 import { Button } from '@/presentation/components/ui/button';
+import { AppSelect } from '@/presentation/components/ui/select';
 import {
   DESKTOP_HOTKEY_DEFINITIONS,
   resetAllHotkeyBindings,
@@ -27,6 +28,7 @@ import {
 } from './desktop-extras';
 import { syncSelectionMonitorSetting } from '../selection/init-selection-monitor';
 import { setLaunchAtStartup } from '../shell/sync-autostart';
+import { getDesktopOs, type DesktopOs } from '../platform/os';
 
 interface DesktopGeneralSettingsProps {
   settings: Settings;
@@ -37,11 +39,13 @@ export function DesktopGeneralSettings({ settings, providers }: DesktopGeneralSe
   const queryClient = useQueryClient();
   const [extras, setExtras] = useState<DesktopExtraSettings>(() => readDesktopExtras());
   const [windowsOcrAvailable, setWindowsOcrAvailable] = useState<boolean | null>(null);
+  const [desktopOs, setDesktopOs] = useState<DesktopOs | null>(null);
 
   useEffect(() => {
     void invoke<boolean>('ocr_is_available')
       .then(setWindowsOcrAvailable)
       .catch(() => setWindowsOcrAvailable(false));
+    void getDesktopOs().then(setDesktopOs);
   }, []);
 
   const updateMutation = useMutation({
@@ -66,22 +70,23 @@ export function DesktopGeneralSettings({ settings, providers }: DesktopGeneralSe
         <CardContent className="space-y-3">
           <div>
             <label className="text-xs text-muted-foreground">Provider</label>
-            <select
-              className="mt-1 w-full rounded-md border bg-background px-3 py-1.5 text-sm"
+            <AppSelect
+              className="mt-1"
+              aria-label="Default AI provider"
               value={settings.defaultProviderId ?? ''}
-              onChange={(event) =>
+              onChange={(nextId) =>
                 updateMutation.mutate({
-                  defaultProviderId: (event.target.value || null) as ProviderId | null,
+                  defaultProviderId: (nextId || null) as ProviderId | null,
                 })
               }
-            >
-              <option value="">Not set</option>
-              {enabledProviders.map((provider) => (
-                <option key={provider.id} value={provider.id}>
-                  {provider.name}
-                </option>
-              ))}
-            </select>
+              options={[
+                { value: '', label: 'Not set' },
+                ...enabledProviders.map((provider) => ({
+                  value: provider.id,
+                  label: provider.name,
+                })),
+              ]}
+            />
           </div>
           <div>
             <label className="text-xs text-muted-foreground">Default Model</label>
@@ -104,17 +109,19 @@ export function DesktopGeneralSettings({ settings, providers }: DesktopGeneralSe
         <CardContent className="space-y-3">
           <div>
             <label className="text-xs text-muted-foreground">Theme</label>
-            <select
-              className="mt-1 w-full rounded-md border bg-background px-3 py-1.5 text-sm"
+            <AppSelect
+              className="mt-1"
+              aria-label="Theme"
               value={settings.theme}
-              onChange={(event) =>
-                updateMutation.mutate({ theme: event.target.value as Settings['theme'] })
+              onChange={(nextTheme) =>
+                updateMutation.mutate({ theme: nextTheme as Settings['theme'] })
               }
-            >
-              <option value="dark">Dark</option>
-              <option value="light">Light</option>
-              <option value="system">System</option>
-            </select>
+              options={[
+                { value: 'dark', label: 'Dark' },
+                { value: 'light', label: 'Light' },
+                { value: 'system', label: 'System' },
+              ]}
+            />
           </div>
         </CardContent>
       </Card>
@@ -126,21 +133,20 @@ export function DesktopGeneralSettings({ settings, providers }: DesktopGeneralSe
         <CardContent className="space-y-3">
           <div>
             <label className="text-xs text-muted-foreground">Preferred response language</label>
-            <select
-              className="mt-1 w-full rounded-md border bg-background px-3 py-1.5 text-sm"
+            <AppSelect
+              className="mt-1"
+              aria-label="Preferred response language"
               value={settings.responseLanguage ?? 'auto'}
-              onChange={(event) =>
+              onChange={(nextLanguage) =>
                 updateMutation.mutate({
-                  responseLanguage: event.target.value as ResponseLanguageCode,
+                  responseLanguage: nextLanguage as ResponseLanguageCode,
                 })
               }
-            >
-              {RESPONSE_LANGUAGE_OPTIONS.map((option) => (
-                <option key={option.code} value={option.code}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
+              options={RESPONSE_LANGUAGE_OPTIONS.map((option) => ({
+                value: option.code,
+                label: option.label,
+              }))}
+            />
             <p className="mt-1.5 text-xs text-muted-foreground">
               Applies to AI responses and built-in action names/prompts.
             </p>
@@ -189,7 +195,7 @@ export function DesktopGeneralSettings({ settings, providers }: DesktopGeneralSe
             </p>
           ) : null}
           <label className="flex items-center justify-between text-sm">
-            <span>Launch at Windows startup (hidden in tray)</span>
+            <span>Launch at login (hidden in tray)</span>
             <button
               type="button"
               className={`relative h-5 w-9 rounded-full transition-colors ${extras.launchAtStartup ? 'bg-primary' : 'bg-muted'}`}
@@ -250,6 +256,12 @@ export function DesktopGeneralSettings({ settings, providers }: DesktopGeneralSe
               />
             </button>
           </label>
+          {desktopOs === 'linux' ? (
+            <p className="text-xs text-muted-foreground">
+              Linux does not auto-detect text selection. Use the toolbar hotkey
+              (default Ctrl+Shift+Space) — it copies the selection and shows the popup.
+            </p>
+          ) : null}
           <label className="flex items-center justify-between text-sm">
             <span>Enable streaming responses</span>
             <button
@@ -300,18 +312,33 @@ export function DesktopGeneralSettings({ settings, providers }: DesktopGeneralSe
           ) : null}
           <div>
             <label className="text-xs text-muted-foreground">OCR engine</label>
-            <select
-              className="mt-1 w-full rounded-md border bg-background px-3 py-1.5 text-sm"
-              value={extras.ocrEngine}
-              onChange={(event) =>
-                setExtras(writeDesktopExtras({ ocrEngine: event.target.value as OcrEngine }))
+            <AppSelect
+              className="mt-1"
+              aria-label="OCR engine"
+              value={desktopOs === 'linux' && extras.ocrEngine === 'windows' ? 'auto' : extras.ocrEngine}
+              onChange={(nextEngine) =>
+                setExtras(writeDesktopExtras({ ocrEngine: nextEngine as OcrEngine }))
               }
-            >
-              <option value="auto">Auto (Windows OCR → Tesseract fallback)</option>
-              <option value="windows">Windows OCR only</option>
-              <option value="tesseract">Tesseract.js only</option>
-            </select>
-            {windowsOcrAvailable === false ? (
+              options={[
+                {
+                  value: 'auto',
+                  label:
+                    desktopOs === 'linux'
+                      ? 'Auto (Tesseract CLI → Tesseract.js fallback)'
+                      : 'Auto (Windows OCR → Tesseract fallback)',
+                },
+                ...(desktopOs === 'linux' ? [] : [{ value: 'windows', label: 'Windows OCR only' }]),
+                { value: 'tesseract', label: 'Tesseract.js only' },
+              ]}
+            />
+            {desktopOs === 'linux' && windowsOcrAvailable === false ? (
+              <p className="mt-1.5 text-xs text-amber-400">
+                Tesseract CLI is not on PATH. Install <code>tesseract</code> and language packs
+                (e.g. <code>tesseract-data-eng</code>, <code>tesseract-data-rus</code>) or use
+                Tesseract.js.
+              </p>
+            ) : null}
+            {desktopOs !== 'linux' && windowsOcrAvailable === false ? (
               <p className="mt-1.5 text-xs text-amber-400">
                 Windows OCR is unavailable on this system — Auto/Tesseract will be used.
               </p>

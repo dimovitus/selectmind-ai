@@ -11,15 +11,18 @@ function createLocalStorageMock() {
 }
 
 describe('translation cache', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.stubGlobal('localStorage', createLocalStorageMock());
     vi.resetModules();
+    const cache = await import('./translation-cache');
+    cache.resetTranslationCacheMemoryForTests();
   });
 
-  it('stores and reads translations', async () => {
+  it('stores and reads translations from memory', async () => {
     const cache = await import('./translation-cache');
     cache.setCachedTranslation('Hello', 'ru', 'Привет');
     expect(cache.getCachedTranslation('Hello', 'ru')).toBe('Привет');
+    expect(cache.peekCachedTranslation('Hello', 'ru')).toBe('Привет');
   });
 
   it('evicts oldest entries beyond max size', async () => {
@@ -54,6 +57,17 @@ describe('translation cache', () => {
       JSON.stringify({ 'ru::hello': 'привет' }),
     );
     const cache = await import('./translation-cache');
+    cache.resetTranslationCacheMemoryForTests();
     expect(cache.getCachedTranslation('hello', 'ru')).toBe('привет');
+  });
+
+  it('defers disk writes until flush', async () => {
+    vi.useFakeTimers();
+    const cache = await import('./translation-cache');
+    cache.setCachedTranslation('Save', 'ru', 'Сохранить');
+    expect(localStorage.getItem('selectmind:live-translate-cache')).toBeNull();
+    vi.advanceTimersByTime(cache.TRANSLATION_CACHE_FLUSH_MS);
+    expect(localStorage.getItem('selectmind:live-translate-cache')).toContain('Сохранить');
+    vi.useRealTimers();
   });
 });

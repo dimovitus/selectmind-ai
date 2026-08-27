@@ -202,6 +202,63 @@ fn translate_one(
     target_language: &str,
     source_language: Option<&str>,
 ) -> Result<String, String> {
+    if text.len() <= MAX_TEXT_LEN {
+        return translate_one_chunk(client, tokens, text, target_language, source_language);
+    }
+
+    let mut output = String::new();
+    for chunk in split_text_for_translation(text, MAX_TEXT_LEN - 50) {
+        let translated =
+            translate_one_chunk(client, tokens, &chunk, target_language, source_language)?;
+        if !output.is_empty() && !translated.is_empty() {
+            if !output.ends_with(' ') && !translated.starts_with(' ') {
+                output.push(' ');
+            }
+        }
+        output.push_str(&translated);
+    }
+    Ok(output.trim().to_string())
+}
+
+fn split_text_for_translation(text: &str, max_len: usize) -> Vec<String> {
+    if text.len() <= max_len {
+        return vec![text.to_string()];
+    }
+
+    let mut chunks = Vec::new();
+    let mut rest = text.trim();
+    while !rest.is_empty() {
+        if rest.len() <= max_len {
+            chunks.push(rest.to_string());
+            break;
+        }
+
+        let mut split_at = rest[..max_len].rfind(['.', '!', '?', '\n']).unwrap_or(max_len);
+        if split_at < max_len / 3 {
+            split_at = rest[..max_len].rfind(' ').unwrap_or(max_len);
+        }
+        if split_at == 0 {
+            split_at = max_len;
+        }
+
+        let (chunk, next) = rest.split_at(split_at);
+        chunks.push(chunk.trim().to_string());
+        rest = next.trim_start();
+    }
+
+    chunks
+}
+
+fn translate_one_chunk(
+    client: &Client,
+    tokens: &BingTokens,
+    text: &str,
+    target_language: &str,
+    source_language: Option<&str>,
+) -> Result<String, String> {
+    if text.is_empty() {
+        return Ok(String::new());
+    }
     if text.len() > MAX_TEXT_LEN {
         return Err(format!(
             "Bing Translate supports at most {MAX_TEXT_LEN} characters per request"

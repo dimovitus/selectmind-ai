@@ -2,32 +2,31 @@
   position: fixed;
   inset: 0;
   pointer-events: none;
-  overflow: visible;
+  overflow: hidden;
   font-family: Inter, system-ui, -apple-system, sans-serif;
   font-size: 14px;
   line-height: 1.5;
   color: #e4e4e7;
 }
 
+/* No max-width here: the native window is sized from this element, so clamping
+   it to the viewport collapses the toolbar a bit more on every resize. */
 .saywa-toolbar {
   pointer-events: auto;
+  width: max-content;
 }
 
 .saywa-toolbar-inner {
   display: flex;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 2px;
   padding: 4px;
-  max-width: min(92vw, 560px);
-  overflow-x: auto;
-  scrollbar-width: thin;
-  background: rgba(24, 24, 27, 0.95);
-  border: 1px solid rgba(63, 63, 70, 0.8);
+  width: max-content;
+  box-sizing: border-box;
+  background: #27272a;
+  border: 1px solid #3f3f46;
   border-radius: 10px;
-  box-shadow:
-    0 4px 24px rgba(0, 0, 0, 0.4),
-    0 0 0 1px rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(12px);
 }
 
 .saywa-toolbar-btn {
@@ -97,17 +96,25 @@
   max-height: calc(100vh - 24px);
   resize: both;
   font-size: calc(13px * var(--saywa-popup-scale, 1));
-  background: rgba(24, 24, 27, 0.97);
-  border: 1px solid rgba(63, 63, 70, 0.8);
+  background: #18181b;
+  border: 1px solid #3f3f46;
   border-radius: 12px;
-  box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.5),
-    0 0 0 1px rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(16px);
+  box-shadow: none;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   position: relative;
+}
+
+.saywa-chat-popup-fill {
+  width: 100% !important;
+  height: 100% !important;
+  min-width: 0;
+  min-height: 0;
+  max-width: none;
+  max-height: none;
+  resize: none;
+  border-radius: 12px;
 }
 
 .saywa-chat-popup::after {

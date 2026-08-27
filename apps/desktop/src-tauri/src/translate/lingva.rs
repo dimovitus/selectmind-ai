@@ -47,12 +47,21 @@ pub fn translate_batch(
     for text in texts {
         let encoded = urlencoding::encode(text);
         let url = format!("{base}/api/v1/{source}/{target_language}/{encoded}");
-        let response = http.get(&url).send().map_err(|error| error.to_string())?;
+        let response = match http.get(&url).send() {
+            Ok(value) => value,
+            Err(_) => {
+                output.push(text.clone());
+                std::thread::sleep(Duration::from_millis(120));
+                continue;
+            }
+        };
         let status = response.status();
         let body = response.text().map_err(|error| error.to_string())?;
 
         if !status.is_success() {
-            return Err(format!("Lingva proxy HTTP {status}: {body}"));
+            output.push(text.clone());
+            std::thread::sleep(Duration::from_millis(120));
+            continue;
         }
 
         let json: serde_json::Value =
@@ -60,9 +69,9 @@ pub fn translate_batch(
         let translation = json
             .get("translation")
             .and_then(|value| value.as_str())
-            .ok_or_else(|| "Lingva response missing translation field".to_string())?
-            .trim()
-            .to_string();
+            .map(|value| value.trim().to_string())
+            .filter(|value| !value.is_empty())
+            .unwrap_or_else(|| text.clone());
 
         output.push(translation);
         std::thread::sleep(Duration::from_millis(120));

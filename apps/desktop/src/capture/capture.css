@@ -4,7 +4,47 @@
   z-index: 99999;
   cursor: crosshair;
   user-select: none;
-  background: rgba(0, 0, 0, 0.08);
+  touch-action: none;
+  background: #09090b;
+  overflow: hidden;
+}
+
+.sw-capture-preview {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  pointer-events: none;
+  user-select: none;
+}
+
+.sw-capture-root::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: rgba(0, 0, 0, 0.38);
+  pointer-events: none;
+}
+
+.sw-capture-root.has-selection::before {
+  display: none;
+}
+
+.sw-capture-loading {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  text-align: center;
+  color: #e4e4e7;
+  font-size: 14px;
+  background: #09090b;
+  pointer-events: none;
 }
 
 .sw-capture-hint {
@@ -32,8 +72,8 @@
 .sw-capture-selection {
   position: fixed;
   z-index: 1;
-  border: 2px solid #8b5cf6;
-  background: rgba(139, 92, 246, 0.12);
+  border: 2px solid #60a5fa;
+  background: transparent;
   box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.45);
   pointer-events: none;
 }

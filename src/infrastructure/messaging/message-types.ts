@@ -62,6 +62,11 @@ export interface RpcRequestMap {
     payload: { conversationId: ConversationId; message: string };
     response: { messageId: string };
   };
+  /** Start (or retry) the assistant turn without appending a user message. */
+  'conversation:start-assistant': {
+    payload: { conversationId: ConversationId };
+    response: { started: boolean };
+  };
   'conversation:add-context': {
     payload: { conversationId: ConversationId; fragment: ContextFragment };
     response: void;

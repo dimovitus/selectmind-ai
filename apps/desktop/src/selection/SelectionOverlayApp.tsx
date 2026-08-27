@@ -15,8 +15,9 @@ import { buildSelectionPageContext } from './build-context';
 import { dismissSelectionOverlay } from './overlay-manager';
 import {
   getPopupPosition,
-  monitorOverlayBounds,
+  popupScreenBounds,
   popupPositionStyle,
+  toolbarScreenBounds,
 } from './positioning';
 import {
   POPUP_DEFAULT_HEIGHT,
@@ -69,6 +70,7 @@ function SelectionOverlayInner() {
   const [toolbarReady, setToolbarReady] = useState(false);
   const busyRef = useRef(false);
   const popupRef = useRef<HTMLDivElement>(null);
+  const toolbarRef = useRef<HTMLDivElement>(null);
   const toolbarGraceTimerRef = useRef<number | null>(null);
   const popupStateRef = useRef<ActivePopup | null>(null);
   const cachedContextRef = useRef<PageContext | null>(null);
@@ -101,11 +103,8 @@ function SelectionOverlayInner() {
 
   useEffect(() => {
     document.documentElement.classList.add('selection-overlay');
-    void emit('selection:overlay-ready', {});
-    return () => document.documentElement.classList.remove('selection-overlay');
-  }, []);
+    let cancelled = false;
 
-  useEffect(() => {
     const unlistenShow = listen<OverlayPayload>('selection:show', (event) => {
       const { snapshot, monitor } = event.payload;
       const text = snapshot.text.trim();
@@ -135,9 +134,20 @@ function SelectionOverlayInner() {
       }
     });
 
+    const unlistenPing = listen('selection:overlay-ping', () => {
+      void emit('selection:overlay-ready', {});
+    });
+
+    void Promise.all([unlistenShow, unlistenHide, unlistenPing]).then(() => {
+      if (!cancelled) void emit('selection:overlay-ready', {});
+    });
+
     return () => {
+      cancelled = true;
+      document.documentElement.classList.remove('selection-overlay');
       void unlistenShow.then((unlisten) => unlisten());
       void unlistenHide.then((unlisten) => unlisten());
+      void unlistenPing.then((unlisten) => unlisten());
     };
   }, [armToolbarGrace]);
 
@@ -170,7 +180,9 @@ function SelectionOverlayInner() {
   useEffect(() => {
     let cancelled = false;
 
-    async function bootstrap() {
+    // The main window seeds the same SQLite file, so the first attempt here can
+    // lose a race. Without retries every toolbar button stays disabled forever.
+    async function bootstrap(attempt = 0): Promise<void> {
       try {
         await initDesktopApp();
         pushListener.listen();
@@ -178,8 +190,18 @@ function SelectionOverlayInner() {
         if (cancelled) return;
         setSaveHistory(settings.saveConversationHistory);
         setDbReady(true);
+        setActionError(null);
       } catch (error) {
+        if (cancelled) return;
         console.error('[selectmind] Selection overlay bootstrap failed:', error);
+        if (attempt < 5) {
+          await new Promise((resolve) => setTimeout(resolve, 400 * (attempt + 1)));
+          if (cancelled) return;
+          return bootstrap(attempt + 1);
+        }
+        setActionError(
+          error instanceof Error ? `Storage unavailable: ${error.message}` : 'Storage unavailable',
+        );
       }
     }
 
@@ -212,8 +234,11 @@ function SelectionOverlayInner() {
       await setOverlayBusy(true);
 
       const monitor = cachedMonitorRef.current;
-      if (monitor) {
-        await emit('selection:overlay-resize', monitorOverlayBounds(monitor));
+      const selectionRect = cachedRectRef.current;
+      if (monitor && selectionRect) {
+        // Size the native window to the chat card — never the full monitor.
+        // A full-monitor opaque window is the black slab users report as a bug.
+        await emit('selection:overlay-resize', popupScreenBounds(selectionRect, monitor));
       }
 
       await getCurrentWindow().setFocus();
@@ -310,12 +335,58 @@ function SelectionOverlayInner() {
     return () => window.clearTimeout(timer);
   }, [popup?.conversationId]);
 
+  // Shrink the native window to the toolbar chrome so Linux's opaque overlay
+  // background cannot show as an empty dark rectangle under the buttons.
+  // Sizing goes through the backend (GTK main thread) — a direct setSize from
+  // the webview is unreliable on Linux.
+  useEffect(() => {
+    if (!showToolbar || popup) return;
+    const el = toolbarRef.current;
+    const monitor = cachedMonitorRef.current;
+    const selectionRect = cachedRectRef.current;
+    if (!el || !monitor || !selectionRect) return;
+
+    let cancelled = false;
+    let lastKey = '';
+
+    const fit = () => {
+      if (cancelled) return;
+      // scrollWidth ignores the current window width, so the measurement cannot
+      // feed back into itself and shrink the toolbar step by step.
+      const width = Math.ceil(el.scrollWidth || el.getBoundingClientRect().width);
+      const height = Math.ceil(el.scrollHeight || el.getBoundingClientRect().height);
+      if (width < 8 || height < 8) return;
+
+      const key = `${width}x${height}`;
+      if (key === lastKey) return;
+      lastKey = key;
+
+      const bounds = toolbarScreenBounds(selectionRect, monitor, width, height);
+      console.warn(`[selectmind] toolbar fit: css ${key} -> ${JSON.stringify(bounds)}`);
+      void emit('selection:overlay-resize', bounds);
+    };
+
+    fit();
+    const frame = window.requestAnimationFrame(fit);
+    const observer = new ResizeObserver(fit);
+    observer.observe(el);
+
+    return () => {
+      cancelled = true;
+      window.cancelAnimationFrame(frame);
+      observer.disconnect();
+    };
+  }, [showToolbar, popup, actions.length, actionError]);
+
+  const popupFillsWindow = Boolean(popup);
+
   return (
     <div className="selection-overlay-root">
       {showToolbar && rect && context ? (
           <div
+            ref={toolbarRef}
             className="saywa-toolbar"
-            style={{ pointerEvents: toolbarReady ? 'auto' : 'none', width: '100%' }}
+            style={{ pointerEvents: toolbarReady ? 'auto' : 'none' }}
           >
             <div className="saywa-toolbar-inner">
               <button
@@ -372,8 +443,21 @@ function SelectionOverlayInner() {
       {popup && popupRect ? (
         <div
           ref={popupRef}
-          style={popupPositionStyle(popupRect, position)}
-          className={`saywa-chat-popup${dragging ? ' saywa-popup-dragging' : ''}`}
+          style={
+            popupFillsWindow
+              ? {
+                  position: 'fixed',
+                  inset: 0,
+                  width: '100%',
+                  height: '100%',
+                  maxWidth: 'none',
+                  maxHeight: 'none',
+                  pointerEvents: 'auto',
+                  zIndex: 2147483647,
+                }
+              : popupPositionStyle(popupRect, position)
+          }
+          className={`saywa-chat-popup${dragging ? ' saywa-popup-dragging' : ''}${popupFillsWindow ? ' saywa-chat-popup-fill' : ''}`}
           onMouseDown={(event) => event.stopPropagation()}
         >
           <div className="saywa-chat-popup-header" onMouseDown={onHeaderMouseDown}>

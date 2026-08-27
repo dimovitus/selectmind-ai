@@ -21,12 +21,31 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 base64 = "0.22"
 image = { version = "0.25", default-features = false, features = ["png"] }
-xcap = "0.9"
 mouse_position = "0.1"
-keyring = { version = "3", features = ["windows-native"] }
 tempfile = "3"
 reqwest = { version = "0.12", default-features = false, features = ["blocking", "json", "rustls-tls", "cookies"] }
+tokio = { version = "1", features = ["time", "rt", "macros"] }
 urlencoding = "2"
+leptess = "0.14"
+
+# xcap's Linux build hard-depends on pipewire/libspa, which does not compile
+# against PipeWire >= 1.4 headers. Linux uses the xdg-desktop-portal backend.
+[target.'cfg(not(target_os = "linux"))'.dependencies]
+xcap = "0.9"
+
+[target.'cfg(windows)'.dependencies]
+keyring = { version = "3", default-features = false, features = ["windows-native"] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+keyring = { version = "3", default-features = false, features = ["sync-secret-service", "crypto-rust"] }
+arboard = "3"
+zbus = "5"
+gtk = "0.18"
+gdk = "0.18"
+# Continuous capture: portal ScreenCast fd → GStreamer pipewiresrc (no direct libpipewire).
+gstreamer = "0.25"
+gstreamer-app = "0.25"
+gstreamer-video = "0.25"
 
 [target.'cfg(windows)'.dependencies.uiautomation]
 version = "0.24"
@@ -35,6 +54,7 @@ version = "0.24"
 version = "0.61"
 features = [
   "Foundation",
+  "Globalization",
   "Graphics_Imaging",
   "Media_Ocr",
   "Storage",

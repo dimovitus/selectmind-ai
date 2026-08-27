@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { rpcClient } from '@/infrastructure/messaging/rpc-client';
 import { Button } from '@/presentation/components/ui/button';
+import { AppSelect } from '@/presentation/components/ui/select';
 import type { ProviderConfig } from '@/domain/provider/provider.schema';
 
 interface OnboardingWizardProps {
@@ -60,7 +61,7 @@ export function OnboardingWizard({
       ? [
           {
             title: 'Welcome to SelectMind AI 🧠',
-            body: 'Capture any screen region with Ctrl+Shift+X, then ask AI to explain. Press Ctrl+Shift+P for the command palette.',
+            body: 'Capture screen text with Ctrl+Shift+X or OCR chat. Press Ctrl+Shift+L for live game translate — full-screen on-demand subtitles in one hotkey. Ctrl+Shift+P opens the command palette.',
           },
           {
             title: 'Connect an AI Provider',
@@ -68,7 +69,7 @@ export function OnboardingWizard({
           },
           {
             title: "You're Ready!",
-            body: 'Use the OCR button or hotkey to capture screen text. Run actions and pipelines from Settings or the command palette.',
+            body: 'Use OCR hotkeys for one-shot capture, or Ctrl+Shift+L for live translate over games. Configure engines in Settings → Live game translate.',
           },
         ]
       : [
@@ -105,21 +106,19 @@ export function OnboardingWizard({
 
         {step === 1 && (
           <div className="mt-6 space-y-3">
-            <select
-              className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+            <AppSelect
+              aria-label="AI provider"
               value={selectedProvider}
-              onChange={(e) => {
-                setSelectedProvider(e.target.value);
-                const p = providers.find((pr) => pr.id === e.target.value);
+              onChange={(nextId) => {
+                setSelectedProvider(nextId);
+                const p = providers.find((pr) => pr.id === nextId);
                 setModel(p?.defaultModel ?? '');
               }}
-            >
-              {providers.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name} ({p.type})
-                </option>
-              ))}
-            </select>
+              options={providers.map((p) => ({
+                value: p.id,
+                label: `${p.name} (${p.type})`,
+              }))}
+            />
 
             {needsKey && (
               <input

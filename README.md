@@ -1,11 +1,13 @@
 # SelectMind AI
 
-**Chrome extension and Windows desktop app** — one AI core, two clients.
+**Chrome extension, Firefox/Zen extension, and desktop app (Windows / Linux)** — one AI core, three clients.
 
 | Client | Platform | Use case |
 |--------|----------|----------|
 | **Chrome extension** | Manifest V3 | AI toolbar on any webpage, side panel, page context |
+| **Firefox / Zen extension** | Manifest V3 | Same UI via sidebar (`npm run build:firefox`) |
 | **Windows desktop app** | Tauri 2 | System-wide toolbar, OCR, **live game translate**, tray + global hotkeys |
+| **Linux desktop app** | Tauri 2 (Arch-first) | Same shell; Tesseract OCR; toolbar via hotkey (no UIA auto-detect) |
 
 Select text, run Explain / Translate / Summarize / custom actions from a floating toolbar, and keep chatting in a resizable popup. Connect your own provider (OpenAI, Anthropic, Gemini, Ollama, …). Keys stay local; requests go directly to the API you configure.
 
@@ -70,7 +72,7 @@ Configure providers and API keys in **Extension options** after install.
 
 ## Install (development)
 
-**Requirements:** Node.js 20+, Google Chrome
+**Requirements:** Node.js 20+, Google Chrome (or Firefox / Zen — see below)
 
 ```bash
 git clone https://github.com/Dimovitus/selectmind-ai.git
@@ -86,7 +88,19 @@ npm run build
 4. Open **SelectMind AI → Settings**, add a provider and API key
 5. Visit any page, select text, and use the toolbar
 
-For hot reload during development:
+### Firefox / Zen
+
+```bash
+npm run build:firefox
+```
+
+1. Open `about:debugging#/runtime/this-firefox`
+2. **Load Temporary Add-on…** and select `dist-firefox/manifest.json`
+3. Open Settings, add a provider and API key
+
+Details and shortcuts: [`docs/FIREFOX.md`](docs/FIREFOX.md)
+
+For hot reload during Chrome development:
 
 ```bash
 npm run dev
@@ -107,11 +121,11 @@ npm run dev
 
 ```
 selectmind-ai/
-├── src/                 # Chrome extension (content, background, options, side panel)
-├── apps/desktop/        # Tauri 2 Windows app (overlay, OCR, tray, SQLite)
+├── src/                 # Browser extension (content, background, options, side panel)
+├── apps/desktop/        # Tauri 2 desktop (Windows / Linux): overlay, OCR, live translate, tray, SQLite
 ├── packages/core/       # Domain, use cases, ports (shared by extension + desktop)
 ├── packages/shared/     # Constants, i18n, hotkey helpers
-└── docs/                # Desktop porting plan, release checklist, store listing
+└── docs/                # Firefox, Linux desktop, live translate, store listing
 ```
 
 ## Development
@@ -120,6 +134,8 @@ selectmind-ai/
 |---------|-------------|
 | `npm run dev` | Extension dev build with HMR |
 | `npm run build` | Extension production build → `dist/` |
+| `npm run build:firefox` | Firefox / Zen build → `dist-firefox/` |
+| `npm run package:firefox` | Zip `dist-firefox` for sideload / AMO |
 | `npm run desktop:dev` | Desktop app with hot reload |
 | `npm run desktop:package` | Windows NSIS installer (unsigned) |
 | `npm run test` | Unit tests (root + workspaces) |
@@ -133,14 +149,16 @@ Architecture: **UI → use cases → domain → ports → adapters** — extensi
 
 ---
 
-## Desktop app (Windows)
+## Desktop app (Windows / Linux)
 
-**Requirements:** Node.js 20+, Rust toolchain, Windows 10/11 x64
+**Windows:** Node.js 20+, Rust toolchain, Windows 10/11 x64
+
+**Linux (Arch):** see [`docs/DESKTOP_LINUX.md`](docs/DESKTOP_LINUX.md) — WebKitGTK, Tesseract, xdg-desktop-portal.
 
 ```bash
 npm install
 npm run desktop:dev       # dev with hot reload
-npm run desktop:package   # NSIS installer → apps/desktop/src-tauri/target/release/bundle/nsis/
+npm run desktop:package   # Windows NSIS or Linux deb/AppImage
 ```
 
 | Default hotkey | Action |
@@ -156,23 +174,26 @@ All hotkeys are configurable in **Settings → Keyboard shortcuts**.
 
 ### Live game translate (v0.2)
 
-Real-time subtitle/dialog translation overlay for games:
+Real-time subtitle/UI translation overlay for games (borderless windowed recommended):
 
-1. **Settings → Live game translate** — pick engine, languages, region
-2. `Ctrl+Shift+L` → draw region over subtitles
-3. Translated text appears on top of the game (click-through)
+1. **Settings → Live game translate** — engine, languages, **Continuous** on/off  
+   (also: system tray **Toggle Continuous Live Translate**, or the overlay pill)
+2. `Ctrl+Shift+L` → full-screen scan (or pick a region in settings)
+3. Translated boxes paint on top of the game; Esc / hotkey again to stop
 
 | Engine | Key required |
 |--------|----------------|
-| Google / Bing (free) | No — default online |
+| Google / Bing (free) | No — fine for on-demand; Continuous prefers Offline NMT |
 | Lingva proxy | No |
 | LibreTranslate (localhost) | No — run server yourself |
-| Offline Argos NMT | No — download ~100 MB model |
+| Offline Argos NMT | No — download ~100 MB model (best for Continuous) |
 | AI provider | Yes — optional |
 
-Docs: [`docs/DESKTOP_LIVE_TRANSLATE.md`](docs/DESKTOP_LIVE_TRANSLATE.md) · offline sidecar: [`apps/desktop/sidecar/README.md`](apps/desktop/sidecar/README.md)
+**Linux Continuous** needs `gst-plugin-pipewire` (PipeWire ScreenCast). Prefer **source language = game language** (e.g. English OCR for English games) — do not point Live at a Russian desktop UI with English OCR.
 
-**Desktop v0.2.0** — live translate + offline Argos · **Extension v0.1.0** unchanged.
+Docs: [`docs/DESKTOP_LIVE_TRANSLATE.md`](docs/DESKTOP_LIVE_TRANSLATE.md) · Linux: [`docs/DESKTOP_LINUX.md`](docs/DESKTOP_LINUX.md) · offline sidecar: [`apps/desktop/sidecar/README.md`](apps/desktop/sidecar/README.md)
+
+**Desktop v0.2.x** — live translate + Continuous + Linux capture · **Extension v0.1.0** unchanged.
 
 Docs: [`DESKTOP_PORTING_PLAN.md`](docs/DESKTOP_PORTING_PLAN.md) · [`DESKTOP_RELEASE.md`](docs/DESKTOP_RELEASE.md) (smoke test) · [`DESKTOP_TOOLBAR.md`](docs/DESKTOP_TOOLBAR.md)
 

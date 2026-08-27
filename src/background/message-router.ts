@@ -270,9 +270,15 @@ export function setupMessageRouter(): void {
       createdAt: timestamp,
     });
 
-    void streamConversation
-      .execute({ conversationId, contextBundle, action: localizedAction })
-      .catch(console.error);
+    // Clipboard has no ChatView — await so the caller can read the reply.
+    // Popup/chat/workspace defer to ChatView (`conversation:start-assistant`).
+    if (localizedAction.outputMode === 'clipboard') {
+      await streamConversation.execute({
+        conversationId,
+        contextBundle,
+        action: localizedAction,
+      });
+    }
 
     return { conversationId };
   });
@@ -368,6 +374,39 @@ export function setupMessageRouter(): void {
       .catch(console.error);
 
     return { messageId };
+  });
+
+  rpcServer.register('conversation:start-assistant', async ({ conversationId }) => {
+    const conversation = await conversationRepo.getById(conversationId);
+    if (!conversation) throw new Error(`Conversation not found: ${conversationId}`);
+
+    const messages = await messageRepo.getByConversation(conversationId);
+    const last = messages.at(-1);
+    if (!last || last.role !== 'user') {
+      return { started: false };
+    }
+
+    const settings = await settingsRepo.get();
+    const sourceAction = conversation.sourceActionId
+      ? await actionRepo.getById(conversation.sourceActionId as ActionId)
+      : null;
+    const localizedAction = sourceAction
+      ? localizeAction(
+          sourceAction,
+          settings.responseLanguage,
+          conversation.contextBundle.language,
+        )
+      : undefined;
+
+    void streamConversation
+      .execute({
+        conversationId,
+        contextBundle: conversation.contextBundle,
+        action: localizedAction,
+      })
+      .catch(console.error);
+
+    return { started: true };
   });
 
   rpcServer.register('conversation:add-context', async ({ conversationId, fragment }) => {

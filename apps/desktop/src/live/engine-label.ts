@@ -25,6 +25,13 @@ export function formatLiveEngineBadge(engineUsed: string | null | undefined): st
   return ENGINE_BADGE_LABELS[engineUsed] ?? engineUsed;
 }
 
+/** True when a network primary fell back to a local engine (show degraded UI). */
+export function isOfflineReserveUsed(engineUsed: string | null | undefined): boolean {
+  if (!engineUsed?.includes('→')) return false;
+  const fallback = engineUsed.split('→')[1] ?? '';
+  return fallback.startsWith('local-');
+}
+
 export function engineRequiresNetwork(engine: LiveTranslationEngine): boolean {
   return engine !== 'local-nmt' && engine !== 'local-libretranslate';
 }

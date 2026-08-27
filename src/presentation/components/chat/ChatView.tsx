@@ -73,10 +73,63 @@ export function ChatView({
 
   const recentMessages = messagesData?.messages ?? [];
   const allMessages = [...olderMessages, ...recentMessages];
+  const pendingKickoffRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    pendingKickoffRef.current = null;
+  }, [conversationId]);
 
   useEffect(() => {
     setHasMore(messagesData?.hasMore ?? false);
   }, [messagesData?.hasMore]);
+
+  // Action OCR / toolbar creates the user turn before ChatView mounts. Kick off
+  // the assistant only after listeners are ready — same order as a follow-up send
+  // (which already worked when the user "nudged" the model).
+  useEffect(() => {
+    if (!messagesData || sending || awaitingResponse || isStreaming || error) return;
+
+    const messages = [...olderMessages, ...recentMessages];
+    const last = messages.at(-1);
+    if (!last || last.role !== 'user') return;
+
+    const userCount = messages.filter((m) => m.role === 'user').length;
+    const assistantCount = messages.filter((m) => m.role === 'assistant').length;
+    if (userCount <= assistantCount) return;
+
+    const kickoffKey = `${conversationId}:${last.id}`;
+    if (pendingKickoffRef.current === kickoffKey) return;
+    pendingKickoffRef.current = kickoffKey;
+
+    setAwaitingResponse(true);
+    setExpectedAssistantCount(assistantCount + 1);
+    setStreamTurn((turn) => turn + 1);
+
+    void (async () => {
+      // Let React apply streamTurn so useStreaming re-subscribes before chunks.
+      await new Promise<void>((resolve) => {
+        window.setTimeout(resolve, 0);
+      });
+      try {
+        const result = await rpcClient.call('conversation:start-assistant', { conversationId });
+        if (!result.started) {
+          setAwaitingResponse(false);
+        }
+      } catch (caught) {
+        setAwaitingResponse(false);
+        setSendError(caught instanceof Error ? caught.message : 'Failed to start reply');
+      }
+    })();
+  }, [
+    messagesData,
+    olderMessages,
+    recentMessages,
+    conversationId,
+    sending,
+    awaitingResponse,
+    isStreaming,
+    error,
+  ]);
 
   useEffect(() => {
     if (!isStreaming && isDone) {

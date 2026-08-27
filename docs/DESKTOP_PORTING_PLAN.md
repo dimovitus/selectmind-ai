@@ -19,6 +19,17 @@ Windows-приложение поверх игр и программ: **выде
 | **5** | Паритет функций с extension | ✅ |
 | **5.1** | Selection overlay (toolbar + popup) | ✅ |
 | **6** | Установщик, подпись, auto-updates | 🟡 |
+| **7** | Linux desktop (Arch) — Tesseract OCR, hotkey toolbar | 🟡 |
+
+---
+
+## Фаза 7 — Linux 🟡
+
+Код порта есть: Tesseract CLI OCR, Secret Service, selection overlay по hotkey, live translate без capture-exclusion (overlay прячется на время скана).
+
+Сборка на Arch требует `clang` (bindgen/pipewire у xcap), `webkit2gtk-4.1`, `tesseract` + language packs. См. [DESKTOP_LINUX.md](./DESKTOP_LINUX.md).
+
+Не в паритете с Windows: auto-toolbar (UIA), WDA_EXCLUDEFROMCAPTURE, synthetic Ctrl+C на чистом Wayland.
 
 ---
 
@@ -95,6 +106,6 @@ npm run desktop:dev
 - **Exclusive fullscreen** — overlay может не работать; OCR toolbar hotkey — да ([DESKTOP_CAPTURE.md](./DESKTOP_CAPTURE.md))
 - **Контекстное меню Windows** — нельзя без DLL-injection; используйте hotkeys
 - **Settings** — conversations в SQLite; preferences/hotkeys пока в localStorage
-- **Gaming FPS** — auto-toolbar polls foreground; отключите в Settings или используйте hotkeys ([DESKTOP_CAPTURE.md](./DESKTOP_CAPTURE.md))
+- **Linux:** auto-toolbar on highlight is not available; use `Ctrl+Shift+Space`. Live OCR needs Tesseract. Details: [DESKTOP_LINUX.md](./DESKTOP_LINUX.md)
 
-Подробнее: [DESKTOP_ADAPTER_CONTRACT.md](./DESKTOP_ADAPTER_CONTRACT.md)
+Подробнее: [DESKTOP_ADAPTER_CONTRACT.md](./DESKTOP_ADAPTER_CONTRACT.md) · Linux: [DESKTOP_LINUX.md](./DESKTOP_LINUX.md)

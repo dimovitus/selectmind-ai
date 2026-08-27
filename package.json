@@ -1,6 +1,6 @@
 {
   "name": "selectmind-ai",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "SelectMind AI — Chrome extension (MV3) and Windows desktop app (Tauri 2) for AI on selected text, OCR, and chat",
   "private": true,
   "type": "module",
@@ -22,10 +22,14 @@
     "generate:icons": "node scripts/generate-icons.mjs",
     "capture:screenshots": "node scripts/capture-store-screenshots.mjs",
     "package:store": "npm run build && node scripts/package-store.mjs",
+    "build:firefox": "node scripts/build-firefox.mjs",
+    "package:firefox": "npm run build:firefox && node scripts/package-firefox.mjs",
     "desktop:dev": "npm run dev:desktop -w @selectmind/desktop",
     "build:desktop": "npm run build:desktop -w @selectmind/desktop",
     "desktop:test": "npm run test -w @selectmind/desktop",
-    "desktop:package": "node scripts/package-desktop.mjs"
+    "desktop:test:all": "npm run desktop:test && npm run test:rust -w @selectmind/desktop",
+    "desktop:package": "node scripts/package-desktop.mjs",
+    "postinstall": "node scripts/fix-unix-bins.mjs"
   },
   "dependencies": {
     "@selectmind/core": "file:packages/core",

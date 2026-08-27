@@ -14,6 +14,7 @@ Select text, get instant AI answers. Explain, translate, chat in place — power
 - **30+ Built-in Actions** — Ready-to-use prompts for writing, coding, learning, and research.
 - **Three UI Modes** — Quick popup for fast answers, inline chat for follow-ups, and a full side panel workspace.
 - **Command Palette** — Press `Ctrl+Shift+P` to search and run any action or pipeline.
+- **Context Menu** — Right-click selected text → **SelectMind AI** → run toolbar actions.
 - **Custom Actions & Pipelines** — Create your own prompts, chain multi-step workflows, and assign hotkeys.
 - **Provider-Agnostic** — Connect cloud APIs or run locally with Ollama. Your API keys are encrypted locally.
 - **Context-Aware** — Automatically includes selected text, page title, and URL in every request.
@@ -62,8 +63,7 @@ English (primary), with multilingual action support
 | `storage` | Save settings, API keys (encrypted), conversations locally |
 | `activeTab` | Read selected text and page context from the current tab |
 | `sidePanel` | Workspace UI in Chrome side panel |
-| `contextMenus` | Right-click actions on selected text |
-| `clipboardRead` | Paste content into chat input |
+| `contextMenus` | Right-click menu on selected text (SelectMind AI → actions) |
 | `alarms` | Periodic cleanup of old conversations per retention setting |
 | `<all_urls>` | Inject content script on any page the user visits |
 
@@ -73,10 +73,20 @@ Host `docs/privacy.html` on GitHub Pages (see below). Use this URL in the Chrome
 
 **https://dimovitus.github.io/selectmind-ai/privacy.html**
 
+**Homepage (Chrome Web Store):** `https://dimovitus.github.io/selectmind-ai/`  
+(or `https://github.com/dimovitus/selectmind-ai` if Pages is not deployed yet)
+
+**Support URL:** `https://github.com/dimovitus/selectmind-ai/issues`
+
 Required statements:
 - No data collection by SelectMind AI
 - API keys and conversations stored locally
 - Third-party AI providers receive user prompts per their policies
+
+## Version Notes (0.1.1)
+
+- Fix context menu registration on install (right-click selected text → SelectMind AI)
+- Remove unused `clipboardRead` permission
 
 ## Version Notes (0.1.0)
 

@@ -53,7 +53,7 @@ export const DESKTOP_HOTKEY_DEFINITIONS: DesktopHotkeyDefinition[] = [
     id: LIVE_TRANSLATE_HOTKEY_ID,
     defaultAccelerator: 'Ctrl+Shift+L',
     label: 'Live game translate',
-    description: 'Toggle live OCR translation overlay for games (killer feature)',
+    description: 'Translate the screen once (or toggle continuous live translate)',
   },
   {
     id: LIVE_REGION_PREV_HOTKEY_ID,

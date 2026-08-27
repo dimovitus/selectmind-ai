@@ -32,5 +32,10 @@ export function readDesktopExtras(): DesktopExtraSettings {
 export function writeDesktopExtras(partial: Partial<DesktopExtraSettings>): DesktopExtraSettings {
   const updated = { ...readDesktopExtras(), ...partial };
   writeJson(DESKTOP_EXTRAS_KEY, updated);
+  if (typeof partial.closeToTray === 'boolean') {
+    void import('../shell/sync-close-to-tray').then(({ syncCloseToTrayPreference }) =>
+      syncCloseToTrayPreference(),
+    );
+  }
   return updated;
 }

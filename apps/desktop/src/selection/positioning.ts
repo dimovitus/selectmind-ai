@@ -71,6 +71,40 @@ export function popupScreenBounds(
   };
 }
 
+/**
+ * Native window bounds (physical px) for a toolbar of a measured CSS size,
+ * anchored under the selection. Mirrors `toolbar_window_bounds` in Rust, but
+ * uses the real rendered width so no button gets clipped.
+ */
+export function toolbarScreenBounds(
+  rect: SelectionRect,
+  monitor: OverlayMonitor,
+  cssWidth: number,
+  cssHeight: number,
+): { x: number; y: number; width: number; height: number } {
+  const scale = monitor.scaleFactor > 0 ? monitor.scaleFactor : 1;
+  const vw = monitor.width / scale;
+  const vh = monitor.height / scale;
+
+  const width = Math.min(cssWidth, vw - MARGIN * 2);
+  const height = Math.min(cssHeight, vh - MARGIN * 2);
+
+  let top = rect.bottom + GAP;
+  if (top + height > vh - MARGIN) {
+    top = rect.top - height - GAP;
+  }
+  top = clamp(top, MARGIN, Math.max(MARGIN, vh - height - MARGIN));
+
+  const left = clamp(rect.left, MARGIN, Math.max(MARGIN, vw - width - MARGIN));
+
+  return {
+    x: monitor.x + Math.round(left * scale),
+    y: monitor.y + Math.round(top * scale),
+    width: Math.max(Math.round(width * scale), 1),
+    height: Math.max(Math.round(height * scale), 1),
+  };
+}
+
 export function monitorOverlayBounds(monitor: OverlayMonitor): {
   x: number;
   y: number;

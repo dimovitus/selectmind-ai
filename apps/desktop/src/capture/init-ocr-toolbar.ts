@@ -7,6 +7,7 @@ import {
   completeScreenCaptureFromRegion,
 } from './run-desktop-capture-flow';
 import { isRegionPickerActive, requestRegionSelection, type RegionPickerResult } from './region-picker-store';
+import { getLastOcrError } from '../platform/tauri-ocr.adapter';
 import {
   getHotkeyAccelerator,
   OCR_TOOLBAR_HOTKEY_ID,
@@ -57,7 +58,12 @@ export async function runDesktopOcrToolbarFlow(
     const screenshot = await completeScreenCaptureFromRegion(picked, platform);
     const text = screenshot.ocrText?.trim();
     if (!text) {
-      throw new Error('No text recognized in the selected area. Try a larger region.');
+      const detail = getLastOcrError();
+      throw new Error(
+        detail
+          ? `No text recognized (${detail}). Install tesseract + language packs, or try a larger/clearer region.`
+          : 'No text recognized in the selected area. Try a larger region, or install tesseract (tesseract-data-eng / tesseract-data-rus).',
+      );
     }
 
     const snapshot = regionToSnapshot(picked, text);

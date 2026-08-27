@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SelectMind AI — Chrome Extension</title>
+  <meta name="description" content="SelectMind AI — explain, translate, and chat about any text on the web. Your AI providers, local keys, privacy-first." />
+  <style>
+    :root { color-scheme: light dark; }
+    body {
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      line-height: 1.6;
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 3rem;
+    }
+    h1 { font-size: 1.75rem; margin-bottom: 0.25rem; }
+    h2 { font-size: 1.1rem; margin-top: 2rem; }
+    p, li { color: #444; }
+    a { color: #1a56db; }
+    @media (prefers-color-scheme: dark) {
+      body { background: #111; color: #eee; }
+      p, li { color: #ccc; }
+      a { color: #8ab4ff; }
+    }
+    .meta { font-size: 0.9rem; opacity: 0.75; }
+    .links { display: flex; flex-wrap: wrap; gap: 0.75rem 1.25rem; margin-top: 1.5rem; }
+  </style>
+</head>
+<body>
+  <h1>SelectMind AI</h1>
+  <p class="meta">Chrome extension · Privacy-first AI on any webpage</p>
+
+  <p>
+    Select text on any page and instantly explain, translate, summarize, or chat —
+    using OpenAI, Anthropic, Gemini, Ollama, or any OpenAI-compatible API you configure.
+    API keys and conversations stay on your device.
+  </p>
+
+  <h2>Features</h2>
+  <ul>
+    <li>Floating toolbar on text selection</li>
+    <li>Side panel workspace and conversation history</li>
+    <li>Screen OCR — capture a region and get an AI explanation</li>
+    <li>30+ built-in actions, custom prompts, and pipelines</li>
+    <li>Command palette (<kbd>Ctrl+Shift+P</kbd>)</li>
+  </ul>
+
+  <h2>Links</h2>
+  <div class="links">
+    <a href="https://github.com/dimovitus/selectmind-ai">GitHub repository</a>
+    <a href="https://github.com/dimovitus/selectmind-ai/issues">Support &amp; issues</a>
+    <a href="privacy.html">Privacy policy</a>
+  </div>
+
+  <h2>Getting started</h2>
+  <ol>
+    <li>Install SelectMind AI from the Chrome Web Store</li>
+    <li>Open extension Settings and add your AI provider + API key</li>
+    <li>Select text on any webpage or use OCR from the side panel</li>
+  </ol>
+</body>
+</html>

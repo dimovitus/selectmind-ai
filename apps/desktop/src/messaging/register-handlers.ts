@@ -225,9 +225,18 @@ export function registerDesktopRpcHandlers(container: DesktopContainer): void {
       createdAt: timestamp,
     });
 
-    void streamConversation
-      .execute({ conversationId, contextBundle, action: localizedAction })
-      .catch(console.error);
+    // Clipboard has no ChatView to kick off the reply — run the stream here and
+    // wait so the caller can read the assistant message immediately after.
+    // Popup/chat/workspace defer to ChatView (`conversation:start-assistant`) so
+    // listeners are subscribed before the first chunk (avoids a silent hang on
+    // Linux where the UI mounts only after this RPC returns).
+    if (localizedAction.outputMode === 'clipboard') {
+      await streamConversation.execute({
+        conversationId,
+        contextBundle,
+        action: localizedAction,
+      });
+    }
 
     return { conversationId };
   });
@@ -266,10 +275,8 @@ export function registerDesktopRpcHandlers(container: DesktopContainer): void {
       createdAt: timestamp,
     });
 
-    void streamConversation
-      .execute({ conversationId, contextBundle, action: localizedAction })
-      .catch(console.error);
-
+    // ChatView (already open or about to open) starts the assistant turn so
+    // stream listeners are attached before chunks arrive.
     return { conversationId };
   });
 
@@ -366,6 +373,41 @@ export function registerDesktopRpcHandlers(container: DesktopContainer): void {
       .catch(console.error);
 
     return { messageId };
+  });
+
+  rpcClient.register('conversation:start-assistant', async ({ conversationId }) => {
+    await syncProviderRegistry(container);
+
+    const conversation = await conversationRepo.getById(conversationId);
+    if (!conversation) throw new Error(`Conversation not found: ${conversationId}`);
+
+    const messages = await messageRepo.getByConversation(conversationId);
+    const last = messages.at(-1);
+    if (!last || last.role !== 'user') {
+      return { started: false };
+    }
+
+    const settings = await platform.settings.get();
+    const sourceAction = conversation.sourceActionId
+      ? await actionRepo.getById(conversation.sourceActionId as ActionId)
+      : null;
+    const localizedAction = sourceAction
+      ? localizeAction(
+          sourceAction,
+          settings.responseLanguage,
+          conversation.contextBundle.language,
+        )
+      : undefined;
+
+    void streamConversation
+      .execute({
+        conversationId,
+        contextBundle: conversation.contextBundle,
+        action: localizedAction,
+      })
+      .catch(console.error);
+
+    return { started: true };
   });
 
   rpcClient.register('conversation:add-context', async ({ conversationId, fragment }) => {

@@ -10,11 +10,11 @@
 
 
 
-1. Pick a screen region once (dialog/subtitle area in a game).
+1. Pick a screen region once (dialog/subtitle area in a game) **or use full-screen on-demand mode (default)**.
 
 2. Toggle live mode with **`Ctrl+Shift+L`** (configurable).
 
-3. SelectMind captures that region in a loop, runs **Windows OCR with line boxes**, translates via a free online engine (default: Google), and draws translated text **on top of the game** in a click-through overlay.
+3. SelectMind captures that region in a loop, runs **native OCR with line boxes** (Windows OCR or Tesseract on Linux), translates via a free online engine (default: Google), and draws translated text **on top of the game** in a click-through overlay.
 
 
 
@@ -26,7 +26,7 @@
 
 |---------|--------|
 
-| `Ctrl+Shift+L` | Toggle live translate on/off |
+| `Ctrl+Shift+L` | Toggle live translate on/off (on-demand: translate then clear) |
 
 | `Ctrl+Shift+Left` | Previous saved region |
 
@@ -34,7 +34,7 @@
 
 
 
-First toggle → region picker if no region saved. Saved regions persist across app restarts (up to 5).
+First toggle → full-screen OCR in on-demand mode. Saved regions (up to 5) are optional for continuous or manual region workflows.
 
 
 
@@ -46,7 +46,7 @@ First toggle → region picker if no region saved. Saved regions persist across 
 
 
 
-- Translation engine (Google / Bing / Lingva / LibreTranslate / Offline Argos / AI)
+- Translation engine (Google / Bing / Lingva / LibreTranslate / Offline Argos / AI) — default Google free
 
 - Auto-fallback when primary engine fails
 
@@ -217,18 +217,20 @@ Bundled Argos sidecar runs automatically when you choose **Offline NMT (Argos)**
 
 ## Smoke test
 
+See **[DESKTOP_LIVE_TRANSLATE_SMOKE.md](./DESKTOP_LIVE_TRANSLATE_SMOKE.md)** for the full QA checklist.
 
+Quick smoke:
 
-1. No API key required for default Google/Bing engines.
+1. No API key required for default Bing/Google engines.
 
 2. Open a game or app with on-screen English text (borderless/windowed).
 
-3. Press `Ctrl+Shift+L` → draw region over subtitle area.
+3. Press `Ctrl+Shift+L` once — overlay shows translated lines with status pill (e.g. `en · 2 lines · Bing`).
 
-4. Overlay should show translated lines with engine badge (e.g. `Google`).
+4. Press `Ctrl+Shift+L` again — overlay clears.
 
-5. Press `Ctrl+Shift+Right` to switch to another saved region if configured.
+5. Optional: pick a saved region, cycle with `Ctrl+Shift+Right` / `Ctrl+Shift+Left`.
 
-6. Press `Ctrl+Shift+L` to stop — overlay hides; OCR toolbar (`Ctrl+Shift+O`) still works as before.
+6. Settings → **Copy diagnostics** after a session — local tick log for debugging (never sent online).
 
 

@@ -3,6 +3,7 @@ import {
   engineRequiresNetwork,
   formatLiveEngineBadge,
   isNetworkEngineUsed,
+  isOfflineReserveUsed,
 } from './engine-label';
 
 describe('engine-label', () => {
@@ -22,5 +23,12 @@ describe('engine-label', () => {
     expect(isNetworkEngineUsed('google-free')).toBe(true);
     expect(isNetworkEngineUsed('local-nmt')).toBe(false);
     expect(isNetworkEngineUsed('local-nmt→google-free')).toBe(false);
+  });
+
+  it('detects offline reserve after network failure', () => {
+    expect(isOfflineReserveUsed('google-free→local-nmt')).toBe(true);
+    expect(isOfflineReserveUsed('bing-free→local-nmt')).toBe(true);
+    expect(isOfflineReserveUsed('local-nmt→google-free')).toBe(false);
+    expect(isOfflineReserveUsed('google-free')).toBe(false);
   });
 });

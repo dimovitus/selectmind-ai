@@ -4,7 +4,7 @@ use crate::capture::MonitorInfo;
 const GAP: i32 = 8;
 const MARGIN: i32 = 12;
 const TOOLBAR_HEIGHT: i32 = 44;
-const TOOLBAR_WIDTH: i32 = 360;
+const TOOLBAR_WIDTH: i32 = 480;
 
 fn clamp(value: i32, min: i32, max: i32) -> i32 {
     value.max(min).min(max)

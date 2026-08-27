@@ -277,7 +277,7 @@ fn resolve_sidecar_command() -> Result<(String, Vec<String>), String> {
     }
 
     Err(
-        "Argos sidecar is unavailable. Install Python + argostranslate for development, or bundle selectmind-argos.exe."
+        "Argos sidecar is unavailable. Install Python 3 + argostranslate for development, or bundle the selectmind-argos sidecar."
             .to_string(),
     )
 }

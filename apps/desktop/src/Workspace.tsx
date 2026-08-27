@@ -23,9 +23,8 @@ import { OnboardingWizard } from '@/options/OnboardingWizard';
 import { SettingsPanel } from './SettingsPanel';
 import { runDesktopScreenshotChat } from './capture/init-capture-hotkey';
 import { runDesktopOcrToolbarFlow } from './capture/init-ocr-toolbar';
-import { listenDesktopCaptureRequests, listenDesktopOcrToolbarRequests } from './shell/init-system-tray';
+import { setDesktopActionListener } from './shell/desktop-tray-actions';
 import { showMainWindowFromTray } from './shell/tray-window';
-import { listenDesktopPaletteRequests } from './shell/init-command-palette-hotkey';
 import { initDesktopHotkeys, syncDesktopHotkeys } from './shell/init-desktop-hotkeys';
 import {
   formatAcceleratorDisplay,
@@ -37,6 +36,7 @@ import {
   SELECTION_TOOLBAR_HOTKEY_ID,
   subscribeHotkeySettings,
 } from './settings/desktop-hotkeys';
+import type { LiveStateChangedPayload } from './live/types';
 import {
   getLiveTranslateError,
   isLiveTranslateActive,
@@ -79,10 +79,23 @@ function WorkspaceInner() {
   const liveTranslateHotkey = formatAcceleratorDisplay(
     getHotkeyAccelerator(LIVE_TRANSLATE_HOTKEY_ID),
   );
-  const ocrButtonTitle = `Capture a screen region and explain it with AI (${ocrCaptureHotkey})`;
+  const ocrButtonTitle = `OCR a screen region into chat (${ocrCaptureHotkey})`;
   const ocrToolbarButtonTitle = `OCR a screen region and open the action toolbar (${ocrToolbarHotkey})`;
 
   useEffect(() => subscribeHotkeySettings(() => setHotkeyRevision((value) => value + 1)), []);
+
+  useEffect(() => {
+    setLiveTranslateActive(isLiveTranslateActive());
+    const unlisten = listen<LiveStateChangedPayload>('live:state-changed', (event) => {
+      setLiveTranslateActive(event.payload.active);
+      if (!event.payload.active) return;
+      const error = getLiveTranslateError();
+      if (error) setOcrError(error);
+    });
+    return () => {
+      void unlisten.then((dispose) => dispose());
+    };
+  }, []);
 
   const { data: settings } = useQuery({
     queryKey: ['settings'],
@@ -168,11 +181,27 @@ function WorkspaceInner() {
   }, [handleOcrComplete]);
 
   useEffect(() => {
-    return listenDesktopPaletteRequests(() => {
-      setShowSettings(false);
-      setPaletteOpen(true);
+    setDesktopActionListener({
+      onBusy: (nextBusy, kind) => {
+        if (kind === 'ocr-chat') setOcrBusy(nextBusy);
+        if (kind === 'ocr-toolbar') setOcrToolbarBusy(nextBusy);
+        if (!nextBusy) {
+          setLiveTranslateActive(isLiveTranslateActive());
+          const error = getLiveTranslateError();
+          if (error) setOcrError(error);
+        }
+      },
+      onError: (message) => setOcrError(message),
+      onPalette: () => {
+        setShowSettings(false);
+        setPaletteOpen(true);
+      },
+      onOcrChatComplete: (conversationId) => {
+        handleOcrComplete(conversationId);
+      },
     });
-  }, []);
+    return () => setDesktopActionListener({});
+  }, [handleOcrComplete]);
 
   const handlePaletteExecute = useCallback(
     async (item: PaletteItem, context: PageContext) => {
@@ -214,40 +243,6 @@ function WorkspaceInner() {
     },
     [openConversation],
   );
-
-  useEffect(() => {
-    return listenDesktopCaptureRequests(() => {
-      if (ocrBusyRef.current || ocrToolbarBusyRef.current) return;
-      setOcrError(null);
-      setOcrBusy(true);
-      void runDesktopScreenshotChat(
-        handleOcrComplete,
-        (message) => setOcrError(message),
-        { targetConversationId: ocrTargetRef.current },
-      )
-        .catch((error: unknown) => {
-          setOcrError(formatUnknownError(error, 'Capture failed'));
-        })
-        .finally(() => {
-          setOcrBusy(false);
-        });
-    });
-  }, [handleOcrComplete]);
-
-  useEffect(() => {
-    return listenDesktopOcrToolbarRequests(() => {
-      if (ocrBusyRef.current || ocrToolbarBusyRef.current) return;
-      setOcrError(null);
-      setOcrToolbarBusy(true);
-      void runDesktopOcrToolbarFlow((message) => setOcrError(message))
-        .catch((error: unknown) => {
-          setOcrError(formatUnknownError(error, 'OCR toolbar failed'));
-        })
-        .finally(() => {
-          setOcrToolbarBusy(false);
-        });
-    });
-  }, []);
 
   useEffect(() => {
     const unlisten = listen<{ conversationId: ConversationId }>(
@@ -299,7 +294,15 @@ function WorkspaceInner() {
       const active = await toggleLiveTranslate(false);
       setLiveTranslateActive(active);
       const error = getLiveTranslateError();
-      if (error) setOcrError(error);
+      if (error) {
+        setOcrError(error);
+        // Main may have been tucked for the scan — bring it back so the error is visible.
+        const { getCurrentWindow } = await import('@tauri-apps/api/window');
+        const main = getCurrentWindow();
+        await main.show();
+        await main.unminimize();
+        await main.setFocus();
+      }
     } catch (error) {
       setOcrError(formatUnknownError(error, 'Live translate failed'));
       setLiveTranslateActive(isLiveTranslateActive());
@@ -406,11 +409,15 @@ function WorkspaceInner() {
               <Button
                 variant={liveTranslateActive ? 'secondary' : 'outline'}
                 size="sm"
-                title={`Toggle live game translation overlay (${liveTranslateHotkey})`}
+                title={
+                  liveTranslateActive
+                    ? `Clear translation overlay (${liveTranslateHotkey})`
+                    : `Translate screen once (${liveTranslateHotkey})`
+                }
                 disabled={screenPickBusy || startingChat}
                 onClick={() => void handleLiveTranslateToggle()}
               >
-                {liveTranslateActive ? '⏹ Live translate' : '🎮 Live translate'}
+                {liveTranslateActive ? '⏹ Clear translate' : '🎮 Translate'}
               </Button>
               <Button
                 variant="outline"
@@ -428,7 +435,7 @@ function WorkspaceInner() {
                 disabled={screenPickBusy || startingChat}
                 onClick={() => void handleOcrCapture()}
               >
-                {ocrBusy ? '…' : '📸 OCR'}
+                {ocrBusy ? '…' : '📸 OCR chat'}
               </Button>
               <Button
                 variant="outline"
@@ -494,14 +501,14 @@ function WorkspaceInner() {
                     disabled={startingChat || screenPickBusy}
                     onClick={() => void handleOcrToolbarCapture()}
                   >
-                    {ocrToolbarBusy ? 'Selecting area…' : '🔤 OCR toolbar (games & images)'}
+                    {ocrToolbarBusy ? 'Selecting area…' : '🔤 OCR toolbar'}
                   </Button>
                   <Button
                     variant="outline"
                     disabled={startingChat || screenPickBusy}
                     onClick={() => void handleOcrCapture()}
                   >
-                    {ocrBusy ? 'Selecting area…' : '📸 Capture screen (OCR)'}
+                    {ocrBusy ? 'Selecting area…' : '📸 OCR chat'}
                   </Button>
                   <p className="text-xs text-muted-foreground">
                     OCR chat:{' '}

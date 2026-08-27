@@ -1,4 +1,4 @@
-import { emit, listen } from '@tauri-apps/api/event';
+import { emit } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import {
   getHotkeyAccelerator,
@@ -16,20 +16,6 @@ async function showMainWindowAndRequestPalette(): Promise<void> {
   await mainWindow.unminimize();
   await mainWindow.setFocus();
   await emit('desktop:palette-request');
-}
-
-export function listenDesktopPaletteRequests(onOpen: () => void): () => void {
-  let unlisten: (() => void) | undefined;
-
-  void listen('desktop:palette-request', () => {
-    onOpen();
-  }).then((dispose) => {
-    unlisten = dispose;
-  });
-
-  return () => {
-    unlisten?.();
-  };
 }
 
 export async function openDesktopCommandPalette(): Promise<void> {

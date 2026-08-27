@@ -26,9 +26,21 @@ function regionKey(region: LiveRegion): string {
   ].join(':');
 }
 
+function isValidLiveRegion(value: unknown): value is LiveRegion {
+  if (!value || typeof value !== 'object') return false;
+  const region = value as Record<string, unknown>;
+  const numbers = ['monitorX', 'monitorY', 'x', 'y', 'width', 'height', 'scaleFactor'] as const;
+  if (!numbers.every((key) => typeof region[key] === 'number' && Number.isFinite(region[key]))) {
+    return false;
+  }
+  return (region.width as number) > 0 && (region.height as number) > 0 && (region.scaleFactor as number) > 0;
+}
+
 export function readLiveRegionStore(): LiveRegionStoreState {
   const stored = readJson<Partial<LiveRegionStoreState>>(LIVE_REGIONS_STORAGE_KEY, {});
-  const regions = Array.isArray(stored.regions) ? stored.regions.slice(0, MAX_SAVED_LIVE_REGIONS) : [];
+  const regions = Array.isArray(stored.regions)
+    ? stored.regions.filter(isValidLiveRegion).slice(0, MAX_SAVED_LIVE_REGIONS)
+    : [];
   const activeIndex =
     typeof stored.activeIndex === 'number' && regions.length > 0
       ? Math.min(Math.max(0, stored.activeIndex), regions.length - 1)

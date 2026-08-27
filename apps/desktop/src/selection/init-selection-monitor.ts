@@ -3,7 +3,7 @@ import { rpcClient } from '@/infrastructure/messaging/rpc-client';
 
 async function applySelectionMonitorSetting(): Promise<void> {
   const settings = await rpcClient.call('settings:get', undefined);
-  await invoke('selection_set_monitor_enabled', { enabled: settings.showFloatingToolbar });
+  await invoke('selection_set_monitor_enabled', { args: { enabled: settings.showFloatingToolbar } });
 }
 
 /** Sync the Rust background selection monitor with app settings. */

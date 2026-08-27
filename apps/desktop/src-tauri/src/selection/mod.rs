@@ -1,3 +1,6 @@
+mod overlay;
+mod positioning;
+
 #[cfg(windows)]
 mod clipboard;
 #[cfg(windows)]
@@ -5,9 +8,12 @@ mod com;
 #[cfg(windows)]
 mod monitor;
 #[cfg(windows)]
-mod positioning;
-#[cfg(windows)]
 mod win;
+
+#[cfg(target_os = "linux")]
+mod clipboard_unix;
+#[cfg(target_os = "linux")]
+mod linux;
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -23,8 +29,6 @@ pub struct SelectionSnapshot {
 pub fn get_selection_snapshot() -> Result<Option<SelectionSnapshot>, String> {
     #[cfg(windows)]
     {
-        // Never inspect our own overlay/main window — that would clear the toolbar
-        // as soon as the user interacts with it.
         if win::foreground_is_own_window() {
             return Ok(None);
         }
@@ -49,19 +53,39 @@ pub fn get_selection_snapshot() -> Result<Option<SelectionSnapshot>, String> {
 pub fn start_monitor(app: &tauri::AppHandle) {
     #[cfg(windows)]
     monitor::init(app);
+    #[cfg(target_os = "linux")]
+    linux::start_monitor(app);
+    #[cfg(not(any(windows, target_os = "linux")))]
+    let _ = app;
 }
 
 pub fn set_monitor_enabled(enabled: bool) {
     #[cfg(windows)]
     monitor::set_monitor_enabled(enabled);
+    #[cfg(target_os = "linux")]
+    linux::set_monitor_enabled(enabled);
+    #[cfg(not(any(windows, target_os = "linux")))]
+    let _ = enabled;
 }
 
 /// Show the toolbar for the current selection in ANY app (clipboard-based capture).
 pub fn show_toolbar_manual(app: &tauri::AppHandle) {
     #[cfg(windows)]
     monitor::show_toolbar_manual(app);
-    #[cfg(not(windows))]
+    #[cfg(target_os = "linux")]
+    linux::show_toolbar_manual(app);
+    #[cfg(not(any(windows, target_os = "linux")))]
     let _ = app;
+}
+
+#[cfg(windows)]
+pub fn foreground_is_own_window() -> bool {
+    win::foreground_is_own_window()
+}
+
+#[cfg(not(windows))]
+pub fn foreground_is_own_window() -> bool {
+    false
 }
 
 #[cfg(windows)]
@@ -79,13 +103,5 @@ pub fn show_toolbar_for_snapshot(
     snapshot: SelectionSnapshot,
     source_window: isize,
 ) -> Result<(), String> {
-    #[cfg(windows)]
-    {
-        return monitor::show_toolbar_for_snapshot(app, snapshot, source_window);
-    }
-    #[cfg(not(windows))]
-    {
-        let _ = (app, snapshot, source_window);
-        Err("Selection toolbar is only supported on Windows".to_string())
-    }
+    overlay::show_toolbar_for_snapshot(app, snapshot, source_window)
 }

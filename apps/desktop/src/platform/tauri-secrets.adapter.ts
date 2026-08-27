@@ -4,7 +4,7 @@ import { readJson, removeKey } from '../storage/local-store';
 
 const LEGACY_SECRETS_KEY = 'api-keys';
 
-/** Desktop: API keys in OS credential store (Windows Credential Manager). */
+/** Desktop: API keys in the OS credential store (Windows Credential Manager / Secret Service). */
 export class TauriSecretsAdapter implements SecretsPort {
   async storeApiKey(providerId: ProviderId, key: string): Promise<void> {
     const trimmed = key.trim();

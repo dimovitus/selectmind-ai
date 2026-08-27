@@ -1,4 +1,5 @@
 dist
+dist-firefox
 apps/desktop/dist
 node_modules
 *.local
@@ -10,4 +11,6 @@ coverage
 test-results
 playwright-report
 apps/desktop/src-tauri/target
+apps/desktop/release
 *.zip
+*.xpi

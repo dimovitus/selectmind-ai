@@ -3,7 +3,6 @@ import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { initDesktopApp } from './di/container';
 import { Workspace } from './Workspace';
-import { initDesktopSystemTray } from './shell/init-system-tray';
 import { hideMainWindowToTray } from './shell/tray-window';
 import { initDesktopAutostart } from './shell/sync-autostart';
 import { initSelectionMonitor } from './selection/init-selection-monitor';
@@ -30,7 +29,6 @@ export function App() {
     async function bootstrap() {
       try {
         await initDesktopApp();
-        await initDesktopSystemTray();
         await initDesktopAutostart();
         initSelectionMonitor();
         const minimized = await invoke<boolean>('should_start_minimized');

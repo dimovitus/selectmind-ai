@@ -19,6 +19,7 @@ import type { SelectionRect } from '../selection-rect';
 import { getSelectionRect, captureRect } from '../selection-rect';
 import { rememberPageSelection } from '../page-context-extractor';
 import contentStyles from './content.css?inline';
+import katexStyles from 'katex/dist/katex.min.css?inline';
 
 interface ActivePopup {
   action: Action;
@@ -319,5 +320,5 @@ function ContentApp() {
 }
 
 export function initContentUI(): void {
-  mountContentUI(<ContentApp />, contentStyles + '\n' + chatStyles);
+  mountContentUI(<ContentApp />, contentStyles + '\n' + chatStyles + '\n' + katexStyles);
 }

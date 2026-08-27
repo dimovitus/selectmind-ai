@@ -1,8 +1,23 @@
+mod common;
+
 #[cfg(windows)]
 mod win;
 
 #[cfg(windows)]
-pub mod lines;
+mod win_lines;
+
+#[cfg(not(windows))]
+mod tesseract;
+
+pub mod lines {
+    pub use crate::ocr::common::{filter_low_contrast_lines, OcrLineBox, OcrLinesResult};
+
+    #[cfg(windows)]
+    pub use crate::ocr::win_lines::{is_available, list_available_languages, recognize_rgba_lines};
+
+    #[cfg(not(windows))]
+    pub use crate::ocr::tesseract::{is_available, list_available_languages, recognize_rgba_lines};
+}
 
 pub fn recognize_image_data_url(data_url: &str) -> Result<String, String> {
     #[cfg(windows)]
@@ -12,19 +27,14 @@ pub fn recognize_image_data_url(data_url: &str) -> Result<String, String> {
 
     #[cfg(not(windows))]
     {
-        let _ = data_url;
-        Err("Windows OCR is only available on Windows".to_string())
+        tesseract::recognize_data_url(data_url)
     }
 }
 
-pub fn is_windows_ocr_available() -> bool {
-    #[cfg(windows)]
-    {
-        return win::is_available();
-    }
+pub fn is_available() -> bool {
+    lines::is_available()
+}
 
-    #[cfg(not(windows))]
-    {
-        false
-    }
+pub fn list_ocr_languages() -> Result<Vec<String>, String> {
+    lines::list_available_languages()
 }

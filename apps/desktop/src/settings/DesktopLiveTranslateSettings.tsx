@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
 import { Card, CardContent, CardHeader, CardTitle } from '@/presentation/components/ui/card';
 import { Button } from '@/presentation/components/ui/button';
+import { AppSelect } from '@/presentation/components/ui/select';
 import {
   DEFAULT_LIVE_TRANSLATE_SETTINGS,
   LIVE_TRANSLATION_ENGINE_OPTIONS,
@@ -29,20 +31,61 @@ import {
   pickNewLiveTranslateRegion,
   resetLiveTranslateRegion,
 } from '../live/live-controller';
+import { probeLiveContinuousCaptureAvailable } from '../live/live-continuous-support';
 import { DesktopOfflineModelsSettings } from './DesktopOfflineModelsSettings';
+import { listInstalledOcrLanguages } from '../live/live-ocr-languages';
+import { getDesktopOs, type DesktopOs } from '../platform/os';
+import {
+  clearLiveDiagnostics,
+  formatLiveDiagnosticsForCopy,
+  getLiveDiagnostics,
+} from '../live/live-diagnostics';
+
+function normalizeOcrTag(tag: string): string {
+  return tag.trim().toLowerCase().replace('_', '-');
+}
+
+function isOcrLanguageInstalled(selected: string, installed: string[]): boolean {
+  if (selected === 'auto') return installed.length > 0;
+  const want = normalizeOcrTag(selected);
+  return installed.some(
+    (tag) => normalizeOcrTag(tag) === want || normalizeOcrTag(tag).startsWith(`${want}-`),
+  );
+}
 
 export function DesktopLiveTranslateSettings() {
   const [settings, setSettings] = useState<LiveTranslateSettings>(() => readLiveTranslateSettings());
   const [ocrAvailable, setOcrAvailable] = useState<boolean | null>(null);
+  const [desktopOs, setDesktopOs] = useState<DesktopOs | null>(null);
+  const [continuousCaptureOk, setContinuousCaptureOk] = useState<boolean | null>(null);
+  const [installedOcrLanguages, setInstalledOcrLanguages] = useState<string[]>([]);
   const [regionStore, setRegionStore] = useState(() => readLiveRegionStore());
   const [librePingStatus, setLibrePingStatus] = useState<string | null>(null);
   const [librePingPending, setLibrePingPending] = useState(false);
   const [cacheStats, setCacheStats] = useState(() => getTranslationCacheStats());
+  const [diagnosticsCopied, setDiagnosticsCopied] = useState(false);
+  const [diagnosticsCount, setDiagnosticsCount] = useState(() => getLiveDiagnostics().length);
 
   useEffect(() => {
     void invoke<boolean>('live_is_available')
       .then(setOcrAvailable)
       .catch(() => setOcrAvailable(false));
+    void getDesktopOs().then(setDesktopOs);
+    void probeLiveContinuousCaptureAvailable()
+      .then(setContinuousCaptureOk)
+      .catch(() => setContinuousCaptureOk(false));
+    void listInstalledOcrLanguages()
+      .then(setInstalledOcrLanguages)
+      .catch(() => setInstalledOcrLanguages([]));
+  }, []);
+
+  useEffect(() => {
+    const refreshDiagnosticsCount = () => setDiagnosticsCount(getLiveDiagnostics().length);
+    refreshDiagnosticsCount();
+    const unlisten = listen('live:state-changed', refreshDiagnosticsCount);
+    return () => {
+      void unlisten.then((dispose) => dispose());
+    };
   }, []);
 
   const liveHotkey = formatAcceleratorDisplay(getHotkeyAccelerator(LIVE_TRANSLATE_HOTKEY_ID));
@@ -56,6 +99,18 @@ export function DesktopLiveTranslateSettings() {
   function update(partial: Partial<LiveTranslateSettings>) {
     const next = writeLiveTranslateSettings(partial);
     setSettings(next);
+  }
+
+  async function copyDiagnostics() {
+    const text = formatLiveDiagnosticsForCopy();
+    try {
+      await navigator.clipboard.writeText(text);
+      setDiagnosticsCopied(true);
+      setDiagnosticsCount(getLiveDiagnostics().length);
+      window.setTimeout(() => setDiagnosticsCopied(false), 2500);
+    } catch {
+      window.prompt('Copy live translate diagnostics:', text);
+    }
   }
 
   async function testLibreTranslateConnection() {
@@ -81,9 +136,14 @@ export function DesktopLiveTranslateSettings() {
       </CardHeader>
       <CardContent className="space-y-4">
         <p className="text-xs text-muted-foreground">
-          Pick a screen region once, then toggle live OCR translation overlay with{' '}
-          <strong>{liveHotkey}</strong>. Cycle saved regions with{' '}
-          <strong>{prevRegionHotkey}</strong> / <strong>{nextRegionHotkey}</strong>.
+          Press <strong>{liveHotkey}</strong> (or the toolbar button) to translate. In on-demand mode
+          the same key clears the overlay; in continuous mode it stops scanning. Esc cancels region
+          selection. Cycle saved regions with <strong>{prevRegionHotkey}</strong> /{' '}
+          <strong>{nextRegionHotkey}</strong>.
+        </p>
+        <p className="rounded-md border border-sky-500/30 bg-sky-500/10 px-3 py-2 text-xs text-sky-100">
+          For games, <strong>Offline NMT (Argos)</strong> or a local LibreTranslate server is the
+          most reliable option — free web endpoints often rate-limit mid-session.
         </p>
         <p className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
           Competitive games with anti-cheat may flag screen capture or overlays. Use in single-player /
@@ -91,28 +151,115 @@ export function DesktopLiveTranslateSettings() {
         </p>
         {ocrAvailable === false ? (
           <p className="text-xs text-red-400">
-            Windows OCR is unavailable. Install a Windows OCR language pack in Settings → Time &amp; language.
+            {desktopOs === 'linux'
+              ? 'Tesseract OCR is unavailable. Install tesseract and language packs (pacman -S tesseract tesseract-data-eng tesseract-data-rus).'
+              : 'Windows OCR is unavailable. Install a Windows OCR language pack in Settings → Time & language.'}
           </p>
         ) : null}
 
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="sm:col-span-2">
-            <label className="text-xs text-muted-foreground">Translation engine</label>
-            <select
-              className="mt-1 w-full rounded-md border bg-background px-3 py-1.5 text-sm"
+        <details className="rounded-md border px-3 py-2 text-xs text-muted-foreground">
+          <summary className="cursor-pointer font-medium text-foreground">How live translate works</summary>
+          <ul className="mt-2 list-disc space-y-1 pl-4">
+            <li>
+              <strong>On demand (default):</strong> press the hotkey once — full-screen OCR + translate. Press again
+              to clear (RetroArch-style).
+            </li>
+            <li>
+              <strong>Continuous:</strong> keeps scanning until you stop. Limit OCR to dialogue or top band for
+              speed.
+            </li>
+            <li>
+              <strong>Regions:</strong> optional saved areas via Pick new region — hotkey always uses full screen unless
+              you explicitly pick a region.
+            </li>
+            <li>
+              <strong>Engines:</strong> offline Argos or local LibreTranslate are most reliable; free web endpoints may
+              rate-limit.
+            </li>
+            <li>
+              <strong>Stop:</strong> press the hotkey again, or <strong>Esc</strong> while the overlay is active.
+            </li>
+            <li>
+              <strong>Gaming:</strong> borderless windowed, single-player recommended. See repo docs{' '}
+              <code className="text-foreground">docs/DESKTOP_LIVE_TRANSLATE.md</code>.
+            </li>
+          </ul>
+        </details>
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="sm:col-span-2 rounded-md border border-emerald-500/30 bg-emerald-500/5 px-3 py-2">
+          <label className="text-xs font-medium text-foreground">Continuous Live Translate</label>
+          <AppSelect
+            className="mt-1"
+            aria-label="Continuous Live Translate"
+            value={settings.triggerMode}
+            onChange={(nextMode) =>
+              update({
+                triggerMode: nextMode as LiveTranslateSettings['triggerMode'],
+              })
+            }
+            options={[
+              { value: 'on-demand', label: 'Off — one hotkey press, then clear' },
+              { value: 'continuous', label: 'On — keep updating until you stop' },
+            ]}
+          />
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            {desktopOs === 'linux' ? (
+              continuousCaptureOk === true ? (
+                <>
+                  Also toggle from the system tray or the overlay pill. Continuous uses a PipeWire stream
+                  (share-screen dialog once).
+                </>
+              ) : (
+                <>
+                  Continuous needs <code className="text-foreground">gst-plugin-pipewire</code>. Tray toggle
+                  still flips the preference — restart after:{' '}
+                  <code className="text-foreground">sudo pacman -S gst-plugin-pipewire</code>. Probe:{' '}
+                  {continuousCaptureOk === null ? 'checking…' : 'plugin not detected yet'}.
+                </>
+              )
+            ) : (
+              <>Also toggle from the system tray or the overlay pill. Prefer Offline NMT for Continuous.</>
+            )}
+          </p>
+        </div>
+        <div className="sm:col-span-2">
+          <label className="text-xs text-muted-foreground">Full-screen scan area (continuous only)</label>
+          <AppSelect
+            className="mt-1"
+            aria-label="Full-screen scan area"
+            value={settings.scanFocus}
+            onChange={(nextFocus) =>
+              update({ scanFocus: nextFocus as LiveTranslateSettings['scanFocus'] })
+            }
+            disabled={settings.triggerMode !== 'continuous'}
+            options={[
+              { value: 'dialogue-band', label: 'Dialogue band — bottom ~42% (subtitles, faster)' },
+              { value: 'top-band', label: 'Top band — upper ~35% (menus / HUD, faster)' },
+              { value: 'full', label: 'Full screen — all UI text (slower)' },
+            ]}
+          />
+          <p className="mt-1 text-xs text-muted-foreground">
+            Hotkey on-demand always scans the full screen once. Continuous mode can limit OCR to the
+            subtitle strip to reduce load and flicker.
+          </p>
+        </div>
+        <div className="sm:col-span-2">
+          <label className="text-xs text-muted-foreground">Translation engine</label>
+            <AppSelect
+              className="mt-1"
+              aria-label="Translation engine"
               value={settings.translationEngine}
-              onChange={(event) =>
+              onChange={(nextEngine) =>
                 update({
-                  translationEngine: event.target.value as LiveTranslateSettings['translationEngine'],
+                  translationEngine: nextEngine as LiveTranslateSettings['translationEngine'],
                 })
               }
-            >
-              {LIVE_TRANSLATION_ENGINE_OPTIONS.map((option) => (
-                <option key={option.id} value={option.id}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
+              options={LIVE_TRANSLATION_ENGINE_OPTIONS.map((option) => ({
+                value: option.id,
+                label: option.label,
+              }))}
+            />
             <p className="mt-1 text-xs text-muted-foreground">
               {
                 LIVE_TRANSLATION_ENGINE_OPTIONS.find((option) => option.id === settings.translationEngine)
@@ -129,8 +276,8 @@ export function DesktopLiveTranslateSettings() {
               disabled={settings.translationEngine === 'ai-provider'}
             />
             <label htmlFor="live-auto-fallback" className="text-xs text-muted-foreground">
-              Auto-fallback to other engines when the primary one fails (Offline → Bing → Google; Bing → Google →
-              Lingva; LibreTranslate → Google)
+              Auto-fallback when the primary engine fails (Google/Bing → Offline reserve; Offline → Google;
+              LibreTranslate → Google). Offline reserve shows a yellow frame on the overlay.
             </label>
           </div>
           <div className="sm:col-span-2">
@@ -182,37 +329,86 @@ export function DesktopLiveTranslateSettings() {
             )}
           </div>
           <div>
-            <label className="text-xs text-muted-foreground">Source language</label>
-            <select
-              className="mt-1 w-full rounded-md border bg-background px-3 py-1.5 text-sm"
-              value={settings.sourceLanguage}
-              onChange={(event) => update({ sourceLanguage: event.target.value })}
-            >
-              <option value="auto">Auto-detect</option>
-              {RESPONSE_LANGUAGE_OPTIONS.filter((option) => option.code !== 'auto').map((option) => (
-                <option key={option.code} value={option.code}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
+            <label className="text-xs text-muted-foreground">
+              {desktopOs === 'linux' ? 'OCR language (Tesseract)' : 'OCR language (Windows)'}
+            </label>
+            <AppSelect
+              className="mt-1"
+              aria-label="OCR language"
+              value={settings.ocrLanguage}
+              onChange={(nextLanguage) => update({ ocrLanguage: nextLanguage })}
+              options={[
+                {
+                  value: 'auto',
+                  label:
+                    desktopOs === 'linux'
+                      ? 'Auto — installed Tesseract languages'
+                      : 'Auto — Windows profile languages',
+                },
+                ...RESPONSE_LANGUAGE_OPTIONS.filter((option) => option.code !== 'auto').map(
+                  (option) => ({
+                    value: option.code,
+                    label: option.label,
+                  }),
+                ),
+              ]}
+            />
             <p className="mt-1 text-xs text-muted-foreground">
-              Use English for most game subtitles. Auto-detect works for online engines; offline models need an exact
-              pair.
+              {desktopOs === 'linux'
+                ? 'Language pack Tesseract should read on screen. Auto / English also include Russian when installed — otherwise Cyrillic becomes Latin lookalikes (кракозябры). Install tesseract-data-eng / tesseract-data-rus.'
+                : 'Which language Windows OCR reads on screen. Match the game UI (English for most imports). Install matching packs in Settings → Time & language if OCR finds nothing.'}
+              {installedOcrLanguages.length > 0 ? (
+                <>
+                  {' '}
+                  Installed OCR packs:{' '}
+                  <span className="text-foreground">{installedOcrLanguages.join(', ')}</span>.
+                </>
+              ) : null}
+              {settings.ocrLanguage !== 'auto' &&
+              installedOcrLanguages.length > 0 &&
+              !isOcrLanguageInstalled(settings.ocrLanguage, installedOcrLanguages) ? (
+                <span className="block text-amber-300">
+                  Selected OCR language may not be installed — native OCR will fall back to default languages.
+                </span>
+              ) : null}
+            </p>
+          </div>
+          <div>
+            <label className="text-xs text-muted-foreground">Translate source language</label>
+            <AppSelect
+              className="mt-1"
+              aria-label="Translate source language"
+              value={settings.sourceLanguage}
+              onChange={(nextLanguage) => update({ sourceLanguage: nextLanguage })}
+              options={[
+                { value: 'auto', label: 'Auto-detect' },
+                ...RESPONSE_LANGUAGE_OPTIONS.filter((option) => option.code !== 'auto').map(
+                  (option) => ({
+                    value: option.code,
+                    label: option.label,
+                  }),
+                ),
+              ]}
+            />
+            <p className="mt-1 text-xs text-muted-foreground">
+              Used by translation APIs only (not OCR). Auto works for online engines; offline models
+              need an exact pair.
             </p>
           </div>
           <div>
             <label className="text-xs text-muted-foreground">Target language</label>
-            <select
-              className="mt-1 w-full rounded-md border bg-background px-3 py-1.5 text-sm"
+            <AppSelect
+              className="mt-1"
+              aria-label="Target language"
               value={settings.targetLanguage}
-              onChange={(event) => update({ targetLanguage: event.target.value })}
-            >
-              {RESPONSE_LANGUAGE_OPTIONS.filter((option) => option.code !== 'auto').map((option) => (
-                <option key={option.code} value={option.code}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
+              onChange={(nextLanguage) => update({ targetLanguage: nextLanguage })}
+              options={RESPONSE_LANGUAGE_OPTIONS.filter((option) => option.code !== 'auto').map(
+                (option) => ({
+                  value: option.code,
+                  label: option.label,
+                }),
+              )}
+            />
           </div>
           <div>
             <label className="text-xs text-muted-foreground">Poll interval (ms)</label>
@@ -228,7 +424,8 @@ export function DesktopLiveTranslateSettings() {
               }
             />
             <p className="mt-1 text-xs text-muted-foreground">
-              Online engines default to 450 ms (~2.2 fps). Offline engines use 300 ms when left at the online default.
+              Used only in continuous mode. Online engines default to 450 ms; offline engines use 300
+              ms when left at the online default.
             </p>
           </div>
           <div>
@@ -353,9 +550,31 @@ export function DesktopLiveTranslateSettings() {
           >
             Clear translation cache
           </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => void copyDiagnostics()}
+          >
+            {diagnosticsCopied ? 'Copied!' : 'Copy diagnostics'}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              clearLiveDiagnostics();
+              setDiagnosticsCopied(false);
+              setDiagnosticsCount(0);
+            }}
+          >
+            Clear diagnostics log
+          </Button>
         </div>
         <p className="text-xs text-muted-foreground">
           Translation cache: {cacheStats.count}/{cacheStats.maxEntries} entries · TTL {cacheStats.ttlHours}h
+          {' · '}
+          Diagnostics: {diagnosticsCount} local tick(s) — never sent online
         </p>
       </CardContent>
     </Card>

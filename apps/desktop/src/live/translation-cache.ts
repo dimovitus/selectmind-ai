@@ -4,6 +4,8 @@ const CACHE_KEY = 'live-translate-cache';
 const CACHE_VERSION = 2;
 export const TRANSLATION_CACHE_MAX_ENTRIES = 500;
 export const TRANSLATION_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+/** Flush dirty memory → localStorage at most this often (tick path stays sync-free). */
+export const TRANSLATION_CACHE_FLUSH_MS = 5_000;
 
 interface CacheEntry {
   value: string;
@@ -21,6 +23,11 @@ export interface TranslationCacheStats {
   maxEntries: number;
   ttlHours: number;
 }
+
+let memory: TranslationCacheStore | null = null;
+let dirty = false;
+let flushTimer: ReturnType<typeof setTimeout> | null = null;
+let unloadHooked = false;
 
 function cacheKey(sourceText: string, targetLanguage: string): string {
   return `${targetLanguage}::${sourceText.trim().toLowerCase()}`;
@@ -43,7 +50,7 @@ function migrateLegacyCache(raw: Record<string, string>): TranslationCacheStore 
   return { version: CACHE_VERSION, entries, order };
 }
 
-function loadStore(): TranslationCacheStore {
+function loadStoreFromDisk(): TranslationCacheStore {
   const raw = readJson<unknown>(CACHE_KEY, null);
   if (!raw || typeof raw !== 'object') {
     return emptyStore();
@@ -61,16 +68,54 @@ function loadStore(): TranslationCacheStore {
   return migrateLegacyCache(raw as Record<string, string>);
 }
 
-function saveStore(store: TranslationCacheStore): void {
-  writeJson(CACHE_KEY, store);
+function ensureUnloadHook(): void {
+  if (unloadHooked || typeof window === 'undefined') return;
+  unloadHooked = true;
+  window.addEventListener('beforeunload', () => {
+    flushTranslationCacheNow();
+  });
+}
+
+function scheduleFlush(): void {
+  dirty = true;
+  ensureUnloadHook();
+  if (flushTimer !== null) return;
+  flushTimer = setTimeout(() => {
+    flushTimer = null;
+    flushTranslationCacheNow();
+  }, TRANSLATION_CACHE_FLUSH_MS);
+}
+
+/** Persist in-memory cache immediately (tests / shutdown). */
+export function flushTranslationCacheNow(): void {
+  if (flushTimer !== null) {
+    clearTimeout(flushTimer);
+    flushTimer = null;
+  }
+  if (!dirty || !memory) return;
+  writeJson(CACHE_KEY, memory);
+  dirty = false;
+}
+
+function store(): TranslationCacheStore {
+  if (!memory) {
+    memory = pruneTranslationCache(loadStoreFromDisk());
+    dirty = false;
+  }
+  return memory;
+}
+
+function commit(next: TranslationCacheStore): void {
+  memory = next;
+  scheduleFlush();
 }
 
 export function pruneTranslationCache(
-  store: TranslationCacheStore,
+  storeInput: TranslationCacheStore,
   now = Date.now(),
 ): TranslationCacheStore {
-  const entries = { ...store.entries };
-  let order = store.order.filter((key) => {
+  const entries = { ...storeInput.entries };
+  let order = storeInput.order.filter((key) => {
     const entry = entries[key];
     if (!entry) return false;
     if (now - entry.updatedAt > TRANSLATION_CACHE_TTL_MS) {
@@ -88,18 +133,31 @@ export function pruneTranslationCache(
   return { version: CACHE_VERSION, entries, order };
 }
 
-function touchEntry(store: TranslationCacheStore, key: string, now: number): TranslationCacheStore {
-  const entry = store.entries[key];
-  if (!entry) return store;
+function touchEntry(current: TranslationCacheStore, key: string, now: number): TranslationCacheStore {
+  const entry = current.entries[key];
+  if (!entry) return current;
 
   return {
-    ...store,
+    ...current,
     entries: {
-      ...store.entries,
+      ...current.entries,
       [key]: { ...entry, updatedAt: now },
     },
-    order: [...store.order.filter((item) => item !== key), key],
+    order: [...current.order.filter((item) => item !== key), key],
   };
+}
+
+/** Read-only peek — no LRU touch, no disk I/O. */
+export function peekCachedTranslation(
+  sourceText: string,
+  targetLanguage: string,
+): string | null {
+  const now = Date.now();
+  const key = cacheKey(sourceText, targetLanguage);
+  const entry = store().entries[key];
+  if (!entry) return null;
+  if (now - entry.updatedAt > TRANSLATION_CACHE_TTL_MS) return null;
+  return entry.value;
 }
 
 export function getCachedTranslation(
@@ -108,16 +166,16 @@ export function getCachedTranslation(
 ): string | null {
   const now = Date.now();
   const key = cacheKey(sourceText, targetLanguage);
-  let store = pruneTranslationCache(loadStore(), now);
-  const entry = store.entries[key];
+  let current = pruneTranslationCache(store(), now);
+  const entry = current.entries[key];
 
   if (!entry) {
-    saveStore(store);
+    if (current !== store()) commit(current);
     return null;
   }
 
-  store = touchEntry(store, key, now);
-  saveStore(store);
+  current = touchEntry(current, key, now);
+  commit(current);
   return entry.value;
 }
 
@@ -128,22 +186,31 @@ export function setCachedTranslation(
 ): void {
   const now = Date.now();
   const key = cacheKey(sourceText, targetLanguage);
-  let store = pruneTranslationCache(loadStore(), now);
+  let current = pruneTranslationCache(store(), now);
 
-  store.entries[key] = { value: translatedText, updatedAt: now };
-  store.order = [...store.order.filter((item) => item !== key), key];
-  store = pruneTranslationCache(store, now);
-  saveStore(store);
+  current = {
+    ...current,
+    entries: {
+      ...current.entries,
+      [key]: { value: translatedText, updatedAt: now },
+    },
+    order: [...current.order.filter((item) => item !== key), key],
+  };
+  current = pruneTranslationCache(current, now);
+  commit(current);
 }
 
 export function clearTranslationCache(): void {
-  saveStore(emptyStore());
+  memory = emptyStore();
+  dirty = true;
+  flushTranslationCacheNow();
 }
 
 export function getTranslationCacheStats(): TranslationCacheStats {
-  const store = pruneTranslationCache(loadStore());
+  const current = pruneTranslationCache(store());
+  if (current !== store()) commit(current);
   return {
-    count: store.order.length,
+    count: current.order.length,
     maxEntries: TRANSLATION_CACHE_MAX_ENTRIES,
     ttlHours: TRANSLATION_CACHE_TTL_MS / (60 * 60 * 1000),
   };
@@ -151,5 +218,16 @@ export function getTranslationCacheStats(): TranslationCacheStats {
 
 /** @internal test helper */
 export function readTranslationCacheStoreForTests(): TranslationCacheStore {
-  return loadStore();
+  flushTranslationCacheNow();
+  return loadStoreFromDisk();
+}
+
+/** @internal test helper — drop in-memory state between tests. */
+export function resetTranslationCacheMemoryForTests(): void {
+  if (flushTimer !== null) {
+    clearTimeout(flushTimer);
+    flushTimer = null;
+  }
+  memory = null;
+  dirty = false;
 }

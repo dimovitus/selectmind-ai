@@ -14,7 +14,7 @@ use std::time::{Duration, Instant};
 pub use engines::EngineId;
 
 #[derive(Debug, Clone, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", default)]
 pub struct TranslateBatchArgs {
     pub texts: Vec<String>,
     pub target_language: String,
@@ -23,6 +23,20 @@ pub struct TranslateBatchArgs {
     pub lingva_base_url: Option<String>,
     pub local_libretranslate_url: Option<String>,
     pub auto_fallback: Option<bool>,
+}
+
+impl Default for TranslateBatchArgs {
+    fn default() -> Self {
+        Self {
+            texts: Vec::new(),
+            target_language: String::new(),
+            source_language: None,
+            engine: None,
+            lingva_base_url: None,
+            local_libretranslate_url: None,
+            auto_fallback: None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -38,7 +52,9 @@ struct ThrottleState {
 
 static NETWORK_THROTTLE: OnceLock<Mutex<ThrottleState>> = OnceLock::new();
 
-const NETWORK_MIN_INTERVAL: Duration = Duration::from_millis(1200);
+/// Soft floor between network translate batches. 1200 ms starved continuous
+/// live mode (poll ~650 ms) and made on-demand feel stuck behind the throttle.
+const NETWORK_MIN_INTERVAL: Duration = Duration::from_millis(350);
 
 fn network_throttle() -> &'static Mutex<ThrottleState> {
     NETWORK_THROTTLE.get_or_init(|| {
@@ -48,42 +64,49 @@ fn network_throttle() -> &'static Mutex<ThrottleState> {
     })
 }
 
-fn wait_for_network_slot() {
-    let mut state = network_throttle()
-        .lock()
-        .expect("translate network throttle poisoned");
-    if let Some(last) = state.last_network_request {
-        let elapsed = last.elapsed();
-        if elapsed < NETWORK_MIN_INTERVAL {
-            std::thread::sleep(NETWORK_MIN_INTERVAL - elapsed);
-        }
+async fn wait_for_network_slot_async() {
+    let sleep_for = {
+        let mut state = network_throttle()
+            .lock()
+            .expect("translate network throttle poisoned");
+        let wait = state.last_network_request.and_then(|last| {
+            let elapsed = last.elapsed();
+            (elapsed < NETWORK_MIN_INTERVAL).then_some(NETWORK_MIN_INTERVAL - elapsed)
+        });
+        state.last_network_request = Some(Instant::now());
+        wait
+    };
+    if let Some(duration) = sleep_for {
+        tokio::time::sleep(duration).await;
     }
-    state.last_network_request = Some(Instant::now());
 }
 
 fn fallback_engines(primary: EngineId) -> &'static [EngineId] {
     match primary {
-        EngineId::BingFree => &[EngineId::GoogleFree],
+        EngineId::BingFree => &[EngineId::GoogleFree, EngineId::LocalNmt],
         EngineId::LocalLibretranslate => &[EngineId::GoogleFree],
-        EngineId::LocalNmt => &[EngineId::BingFree, EngineId::GoogleFree],
-        _ => &[],
+        // Bing is line-by-line and routinely blows the live UI timeout —
+        // never auto-chain it after offline failure.
+        EngineId::LocalNmt => &[EngineId::GoogleFree],
+        // Network scrapers → offline reserve when rate-limited / offline.
+        EngineId::GoogleFree | EngineId::GoogleProxy => &[EngineId::LocalNmt],
     }
 }
 
-fn translate_with_optional_fallback(
+async fn translate_with_optional_fallback(
     primary: EngineId,
     ctx: &engines::TranslateContext<'_>,
     auto_fallback: bool,
 ) -> Result<engines::EngineResult, String> {
-    match engines::translate(primary, ctx) {
+    match engines::translate(primary, ctx).await {
         Ok(result) => Ok(result),
         Err(primary_error) if !auto_fallback => Err(primary_error),
         Err(primary_error) => {
             for fallback in fallback_engines(primary) {
                 if fallback.requires_network() {
-                    wait_for_network_slot();
+                    wait_for_network_slot_async().await;
                 }
-                match engines::translate(*fallback, ctx) {
+                match engines::translate(*fallback, ctx).await {
                     Ok(result) => {
                         return Ok(engines::EngineResult {
                             translations: result.translations,
@@ -98,7 +121,7 @@ fn translate_with_optional_fallback(
     }
 }
 
-pub fn translate_batch(args: TranslateBatchArgs) -> Result<TranslateBatchResult, String> {
+pub async fn translate_batch(args: TranslateBatchArgs) -> Result<TranslateBatchResult, String> {
     if args.texts.is_empty() {
         return Ok(TranslateBatchResult {
             translations: Vec::new(),
@@ -106,15 +129,19 @@ pub fn translate_batch(args: TranslateBatchArgs) -> Result<TranslateBatchResult,
         });
     }
 
+    if args.target_language.trim().is_empty() {
+        return Err("Target language is not set — check Live translate settings".to_string());
+    }
+
     let engine = EngineId::parse(args.engine.as_deref().unwrap_or("google-free"));
     let auto_fallback = args.auto_fallback.unwrap_or(true);
     let ctx = engines::build_context(&args);
 
     if engine.requires_network() {
-        wait_for_network_slot();
+        wait_for_network_slot_async().await;
     }
 
-    let result = translate_with_optional_fallback(engine, &ctx, auto_fallback)?;
+    let result = translate_with_optional_fallback(engine, &ctx, auto_fallback).await?;
     Ok(TranslateBatchResult {
         translations: result.translations,
         engine_used: result.engine_used,
@@ -131,7 +158,11 @@ mod tests {
 
     #[test]
     fn routes_local_engine_without_model_errors_when_no_fallback() {
-        let result = translate_batch(TranslateBatchArgs {
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+        let result = runtime.block_on(translate_batch(TranslateBatchArgs {
             texts: vec!["Quest accepted".to_string()],
             target_language: "ru".to_string(),
             source_language: Some("auto".to_string()),
@@ -139,22 +170,27 @@ mod tests {
             lingva_base_url: None,
             local_libretranslate_url: None,
             auto_fallback: Some(false),
-        });
+        }));
         assert!(result.is_err());
     }
 
     #[test]
     fn empty_batch_returns_none_engine() {
-        let result = translate_batch(TranslateBatchArgs {
-            texts: vec![],
-            target_language: "ru".to_string(),
-            source_language: None,
-            engine: None,
-            lingva_base_url: None,
-            local_libretranslate_url: None,
-            auto_fallback: None,
-        })
-        .unwrap();
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+        let result = runtime
+            .block_on(translate_batch(TranslateBatchArgs {
+                texts: vec![],
+                target_language: "ru".to_string(),
+                source_language: None,
+                engine: None,
+                lingva_base_url: None,
+                local_libretranslate_url: None,
+                auto_fallback: None,
+            }))
+            .unwrap();
         assert_eq!(result.engine_used, "none");
     }
 
@@ -166,19 +202,29 @@ mod tests {
 
     #[test]
     fn bing_has_google_fallback_chain() {
-        assert_eq!(fallback_engines(EngineId::BingFree), &[EngineId::GoogleFree]);
+        assert_eq!(
+            fallback_engines(EngineId::BingFree),
+            &[EngineId::GoogleFree, EngineId::LocalNmt]
+        );
         assert_eq!(
             fallback_engines(EngineId::LocalLibretranslate),
             &[EngineId::GoogleFree]
         );
-        assert!(fallback_engines(EngineId::GoogleProxy).is_empty());
+        assert_eq!(
+            fallback_engines(EngineId::GoogleFree),
+            &[EngineId::LocalNmt]
+        );
+        assert_eq!(
+            fallback_engines(EngineId::GoogleProxy),
+            &[EngineId::LocalNmt]
+        );
     }
 
     #[test]
-    fn local_nmt_falls_back_to_online_chain() {
+    fn local_nmt_falls_back_to_google_only() {
         assert_eq!(
             fallback_engines(EngineId::LocalNmt),
-            &[EngineId::BingFree, EngineId::GoogleFree]
+            &[EngineId::GoogleFree]
         );
     }
 }

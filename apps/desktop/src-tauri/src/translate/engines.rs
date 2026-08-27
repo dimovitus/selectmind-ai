@@ -58,58 +58,88 @@ impl EngineId {
     }
 }
 
-pub fn translate(engine: EngineId, ctx: &TranslateContext<'_>) -> Result<EngineResult, String> {
-    let source_ref = ctx.source.as_deref();
-
+pub async fn translate(engine: EngineId, ctx: &TranslateContext<'_>) -> Result<EngineResult, String> {
     match engine {
         EngineId::GoogleProxy => {
-            let base = normalize_lingva_base(ctx.lingva_base_url);
-            let translations = lingva::translate_batch(base, ctx.texts, &ctx.target, source_ref)?;
-            Ok(EngineResult {
+            let base = normalize_lingva_base(ctx.lingva_base_url).to_string();
+            let texts = ctx.texts.to_vec();
+            let target = ctx.target.clone();
+            let source = ctx.source.clone();
+            tauri::async_runtime::spawn_blocking(move || {
+                lingva::translate_batch(&base, &texts, &target, source.as_deref())
+            })
+            .await
+            .map_err(|error| error.to_string())?
+            .map(|translations| EngineResult {
                 translations,
                 engine_used: EngineId::GoogleProxy.as_str().to_string(),
             })
         }
         EngineId::BingFree => {
-            let translations = bing_free::translate_batch(ctx.texts, &ctx.target, source_ref)?;
-            Ok(EngineResult {
+            let texts = ctx.texts.to_vec();
+            let target = ctx.target.clone();
+            let source = ctx.source.clone();
+            tauri::async_runtime::spawn_blocking(move || {
+                bing_free::translate_batch(&texts, &target, source.as_deref())
+            })
+            .await
+            .map_err(|error| error.to_string())?
+            .map(|translations| EngineResult {
                 translations,
                 engine_used: EngineId::BingFree.as_str().to_string(),
             })
         }
-        EngineId::LocalLibretranslate => libretranslate::translate_batch(
-            &ctx.libretranslate_base_url,
-            ctx.texts,
-            &ctx.target,
-            source_ref,
-        ),
-        EngineId::LocalNmt => local_nmt::translate_batch(
-            ctx.texts,
-            &ctx.target,
-            source_ref,
-            &ctx.engine_used_label,
-        ),
-        EngineId::GoogleFree => translate_google_with_fallback(ctx),
+        EngineId::LocalLibretranslate => {
+            let base = ctx.libretranslate_base_url.clone();
+            let texts = ctx.texts.to_vec();
+            let target = ctx.target.clone();
+            let source = ctx.source.clone();
+            tauri::async_runtime::spawn_blocking(move || {
+                libretranslate::translate_batch(&base, &texts, &target, source.as_deref())
+            })
+            .await
+            .map_err(|error| error.to_string())?
+        }
+        EngineId::LocalNmt => {
+            let texts = ctx.texts.to_vec();
+            let target = ctx.target.clone();
+            let source = ctx.source.clone();
+            let label = ctx.engine_used_label.clone();
+            tauri::async_runtime::spawn_blocking(move || {
+                local_nmt::translate_batch(&texts, &target, source.as_deref(), &label)
+            })
+            .await
+            .map_err(|error| error.to_string())?
+        }
+        EngineId::GoogleFree => translate_google_with_fallback(ctx).await,
     }
 }
 
-fn translate_google_with_fallback(ctx: &TranslateContext<'_>) -> Result<EngineResult, String> {
+async fn translate_google_with_fallback(ctx: &TranslateContext<'_>) -> Result<EngineResult, String> {
     let source_ref = ctx.source.as_deref();
 
-    match google_free::translate_batch(ctx.texts, &ctx.target, source_ref) {
+    match google_free::translate_batch(ctx.texts, &ctx.target, source_ref).await {
         Ok(translations) => Ok(EngineResult {
             translations,
             engine_used: EngineId::GoogleFree.as_str().to_string(),
         }),
         Err(primary_error) => {
-            let base = normalize_lingva_base(ctx.lingva_base_url);
-            match lingva::translate_batch(base, ctx.texts, &ctx.target, source_ref) {
+            let base = normalize_lingva_base(ctx.lingva_base_url).to_string();
+            let texts = ctx.texts.to_vec();
+            let target = ctx.target.clone();
+            let source = ctx.source.clone();
+            match tauri::async_runtime::spawn_blocking(move || {
+                lingva::translate_batch(&base, &texts, &target, source.as_deref())
+            })
+            .await
+            .map_err(|error| error.to_string())?
+            {
                 Ok(translations) => Ok(EngineResult {
                     translations,
                     engine_used: "google-proxy-fallback".to_string(),
                 }),
                 Err(proxy_error) => Err(format!(
-                    "{primary_error}; proxy fallback failed: {proxy_error}"
+                    "{primary_error}; lingva fallback failed: {proxy_error}"
                 )),
             }
         }
@@ -178,6 +208,12 @@ mod tests {
 
     #[test]
     fn local_nmt_requires_downloaded_model() {
+        // Skip on machines that actually have the en→ru offline model — the
+        // engine then proceeds past the install check to the sidecar.
+        if crate::models::is_pair_installed("en", "ru") {
+            return;
+        }
+
         let args = TranslateBatchArgs {
             texts: vec!["Hello".to_string()],
             target_language: "ru".to_string(),
@@ -188,7 +224,13 @@ mod tests {
             auto_fallback: None,
         };
         let ctx = build_context(&args);
-        let error = translate(EngineId::LocalNmt, &ctx).unwrap_err();
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+        let error = runtime
+            .block_on(translate(EngineId::LocalNmt, &ctx))
+            .unwrap_err();
         assert!(error.contains("not installed"));
     }
 

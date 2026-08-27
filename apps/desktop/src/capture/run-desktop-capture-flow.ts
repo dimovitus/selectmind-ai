@@ -2,7 +2,7 @@ import type { PlatformPorts } from '@selectmind/core';
 import { cropImageDataUrl } from '@selectmind/shared';
 import type { PageContext, ScreenshotCapture } from '@selectmind/shared';
 import { createTauriPlatform, TauriCaptureAdapter } from '../platform';
-import { focusCaptureWindow, waitForOverlayDismiss } from './capture-utils';
+import { cropPreviewToRegion, focusCaptureWindow, waitForOverlayDismiss } from './capture-utils';
 import { requestRegionSelection, type RegionPickerResult } from './region-picker-store';
 
 async function cropCapturedImage(
@@ -25,6 +25,24 @@ export async function completeScreenCaptureFromRegion(
   platform: PlatformPorts = createTauriPlatform(),
 ): Promise<ScreenshotCapture> {
   await waitForOverlayDismiss();
+
+  if (picked.previewDataUrl) {
+    const cropped = await cropPreviewToRegion(
+      picked.previewDataUrl,
+      picked.region,
+      picked.viewportWidth ?? window.innerWidth,
+      picked.viewportHeight ?? window.innerHeight,
+    );
+    const ocrText = await platform.ocr.recognizeText(cropped, {
+      languages: ['eng', 'rus'],
+    });
+    return {
+      dataUrl: cropped,
+      ocrText: ocrText.trim() || undefined,
+      width: Math.round(picked.region.width),
+      height: Math.round(picked.region.height),
+    };
+  }
 
   if (platform.capture.captureRegion) {
     const capture = platform.capture as TauriCaptureAdapter;

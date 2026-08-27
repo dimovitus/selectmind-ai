@@ -1,3 +1,13 @@
+import { openWorkspacePanel } from '@/platform/extension/browser-api';
+
+async function openWorkspace(tabId?: number): Promise<void> {
+  try {
+    await openWorkspacePanel(tabId);
+  } catch (error) {
+    console.warn('Could not open workspace panel', error);
+  }
+}
+
 export function setupLifecycle(): void {
   chrome.runtime.onInstalled.addListener((details) => {
     if (details.reason === 'install') {
@@ -7,7 +17,7 @@ export function setupLifecycle(): void {
 
   chrome.action.onClicked.addListener(async (tab) => {
     if (tab.id) {
-      await chrome.sidePanel.open({ tabId: tab.id });
+      await openWorkspace(tab.id);
     }
   });
 
@@ -19,13 +29,13 @@ export function setupLifecycle(): void {
     if (msg.type === 'saywa:open-sidepanel') {
       const tabId = sender.tab?.id;
       if (tabId) {
-        void chrome.sidePanel.open({ tabId }).then(() => {
+        void openWorkspace(tabId).then(() => {
           void chrome.runtime.sendMessage(message);
         });
       } else {
         void chrome.tabs.query({ active: true, currentWindow: true }).then(([tab]) => {
           if (tab?.id) {
-            void chrome.sidePanel.open({ tabId: tab.id }).then(() => {
+            void openWorkspace(tab.id).then(() => {
               void chrome.runtime.sendMessage(message);
             });
           }
@@ -37,9 +47,10 @@ export function setupLifecycle(): void {
   chrome.commands.onCommand.addListener((command) => {
     switch (command) {
       case 'toggle-sidepanel':
+      case '_execute_sidebar_action':
         void chrome.tabs.query({ active: true, currentWindow: true }).then(([tab]) => {
           if (tab?.id) {
-            void chrome.sidePanel.open({ tabId: tab.id });
+            void openWorkspace(tab.id);
           }
         });
         break;

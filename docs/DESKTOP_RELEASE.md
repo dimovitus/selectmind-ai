@@ -112,13 +112,15 @@ Run after install or `npm run desktop:dev`.
 
 | # | Check | Pass |
 |---|--------|:----:|
-| 20 | `Ctrl+Shift+L` → pick region → overlay shows translated lines | ☐ |
-| 21 | Engine badge visible (Google / Offline / …) | ☐ |
+| 20 | `Ctrl+Shift+L` → full-screen overlay with translated lines (on-demand, no region picker) | ☐ |
+| 21 | Status pill shows OCR + line count + engine (Bing / Offline / …) | ☐ |
 | 22 | `Ctrl+Shift+Right` cycles saved regions | ☐ |
 | 23 | Offline: model downloaded → Test offline engine → Offline NMT works | ☐ |
 | 24 | Auto-fallback: disable sidecar/model → online fallback or error in overlay | ☐ |
 | 25 | Clear translation cache → count resets in Settings | ☐ |
+| 26 | Copy diagnostics → local tick log in clipboard (no network) | ☐ |
 
+See [DESKTOP_LIVE_TRANSLATE_SMOKE.md](./DESKTOP_LIVE_TRANSLATE_SMOKE.md) for the full manual E2E checklist.
 See [DESKTOP_LIVE_TRANSLATE.md](./DESKTOP_LIVE_TRANSLATE.md) for engine setup and gaming checklist.
 
 See also [DESKTOP_CAPTURE.md](./DESKTOP_CAPTURE.md) for gaming / anti-cheat notes.

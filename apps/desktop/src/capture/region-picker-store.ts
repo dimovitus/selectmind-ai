@@ -13,6 +13,10 @@ export interface RegionPickerResult {
     height: number;
     scaleFactor: number;
   };
+  /** Frozen monitor screenshot shown in the picker (avoids a black GTK overlay). */
+  previewDataUrl?: string;
+  viewportWidth?: number;
+  viewportHeight?: number;
 }
 
 let picking = false;

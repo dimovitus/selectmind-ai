@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Button } from '@/presentation/components/ui/button';
+import { invalidateOfflineModelCache } from '../live/live-engine-resolve';
 import {
   deleteOfflineModel,
   downloadOfflineModel,
@@ -72,6 +73,7 @@ export function DesktopOfflineModelsSettings() {
 
     try {
       await downloadOfflineModel(item.id);
+      invalidateOfflineModelCache();
       await refreshModels();
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -86,6 +88,7 @@ export function DesktopOfflineModelsSettings() {
     setActionError(null);
     try {
       await deleteOfflineModel(item.id);
+      invalidateOfflineModelCache();
       await refreshModels();
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);

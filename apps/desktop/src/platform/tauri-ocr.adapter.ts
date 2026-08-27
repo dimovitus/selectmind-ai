@@ -3,6 +3,11 @@ import type { OcrOptions, OcrPort } from '@selectmind/core';
 import { readDesktopExtras } from '../settings/desktop-extras';
 
 let workerPromise: Promise<import('tesseract.js').Worker> | null = null;
+let lastOcrError: string | null = null;
+
+export function getLastOcrError(): string | null {
+  return lastOcrError;
+}
 
 async function getWorker(): Promise<import('tesseract.js').Worker> {
   if (!workerPromise) {
@@ -14,45 +19,49 @@ async function getWorker(): Promise<import('tesseract.js').Worker> {
   return workerPromise;
 }
 
-async function recognizeWithTesseract(imageDataUrl: string): Promise<string> {
+async function recognizeWithTesseractJs(imageDataUrl: string): Promise<string> {
   try {
     const worker = await getWorker();
     const result = await worker.recognize(imageDataUrl);
     return result.data.text.trim();
-  } catch {
+  } catch (error) {
+    lastOcrError = error instanceof Error ? error.message : String(error);
     return '';
   }
 }
 
-async function recognizeWithWindows(imageDataUrl: string): Promise<string> {
+async function recognizeWithNative(imageDataUrl: string): Promise<string> {
   const text = await invoke<string>('ocr_recognize_data_url', { dataUrl: imageDataUrl });
   return text.trim();
 }
 
-/** Desktop Phase 4: Windows OCR API with tesseract.js fallback. */
+/** Desktop: native OCR (Windows OCR / Tesseract CLI) with tesseract.js fallback. */
 export class TauriOcrAdapter implements OcrPort {
   async recognizeText(imageDataUrl: string, _options?: OcrOptions): Promise<string> {
+    lastOcrError = null;
     const { ocrEngine } = readDesktopExtras();
 
     if (ocrEngine === 'tesseract') {
-      return recognizeWithTesseract(imageDataUrl);
+      return recognizeWithTesseractJs(imageDataUrl);
     }
 
     if (ocrEngine === 'windows') {
       try {
-        return await recognizeWithWindows(imageDataUrl);
-      } catch {
-        return recognizeWithTesseract(imageDataUrl);
+        return await recognizeWithNative(imageDataUrl);
+      } catch (error) {
+        lastOcrError = error instanceof Error ? error.message : String(error);
+        return recognizeWithTesseractJs(imageDataUrl);
       }
     }
 
     try {
-      const windowsText = await recognizeWithWindows(imageDataUrl);
-      if (windowsText) return windowsText;
-    } catch {
-      /* fall through to tesseract */
+      const nativeText = await recognizeWithNative(imageDataUrl);
+      if (nativeText) return nativeText;
+    } catch (error) {
+      lastOcrError = error instanceof Error ? error.message : String(error);
+      console.warn('[selectmind] native OCR failed:', lastOcrError);
     }
 
-    return recognizeWithTesseract(imageDataUrl);
+    return recognizeWithTesseractJs(imageDataUrl);
   }
 }

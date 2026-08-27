@@ -8,6 +8,7 @@ import { engineRequiresNetwork } from './engine-label';
 import type { LiveTranslationEngine } from './live-settings';
 import type { OcrLineBox } from './types';
 import { getCachedTranslation, setCachedTranslation } from './translation-cache';
+import { textMatchesTargetScript } from './live-script';
 
 const requestTimestamps: number[] = [];
 
@@ -44,13 +45,15 @@ async function translateBatchViaRust(
   autoFallback: boolean,
 ): Promise<TranslateBatchResult> {
   return invoke<TranslateBatchResult>('translate_batch', {
-    texts,
-    targetLanguage,
-    sourceLanguage,
-    engine,
-    lingvaBaseUrl,
-    localLibretranslateUrl: localLibreTranslateUrl,
-    autoFallback,
+    args: {
+      texts,
+      targetLanguage,
+      sourceLanguage,
+      engine,
+      lingvaBaseUrl,
+      localLibretranslateUrl: localLibreTranslateUrl,
+      autoFallback,
+    },
   });
 }
 
@@ -119,6 +122,13 @@ export async function translateOcrLines(
   for (const line of lines) {
     const source = line.text.trim();
     if (!source) continue;
+
+    // Already in the target script (e.g. Russian UI + target=ru) — sending it
+    // through Google with sl=en produces mixed-script garbage.
+    if (textMatchesTargetScript(source, targetLanguage)) {
+      result.set(source, source);
+      continue;
+    }
 
     const cached = getCachedTranslation(source, targetLanguage);
     if (cached) {

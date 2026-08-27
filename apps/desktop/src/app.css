@@ -37,11 +37,23 @@ body {
 html.capture-overlay,
 html.capture-overlay body,
 html.capture-overlay #root {
-  background: transparent !important;
+  background: #09090b !important;
 }
 
 html.selection-overlay,
 html.selection-overlay body,
 html.selection-overlay #root {
+  /* Match the toolbar chrome. Do NOT use min-height: 100vh — the overlay window
+     is only as tall as the toolbar, and a tall body paints an empty dark slab. */
+  background: #27272a !important;
+  min-height: 0 !important;
+  height: 100% !important;
+  overflow: hidden !important;
+  margin: 0 !important;
+}
+
+html.live-overlay,
+html.live-overlay body,
+html.live-overlay #root {
   background: transparent !important;
 }

@@ -21,12 +21,16 @@ export class ChromeSettingsAdapter implements SettingsPort {
     return updated as AppSettings;
   }
 
-  /** Chrome sync — extension-only; not part of SettingsPort. */
+  /** Browser sync — no-op if the account sync backend is unavailable (common on Firefox). */
   async pullFromSync(): Promise<void> {
-    const result = await chrome.storage.sync.get(SYNC_KEY);
-    const syncSettings = result[SYNC_KEY] as SyncSettings | undefined;
-    if (syncSettings) {
-      await this.update(syncSettings);
+    try {
+      const result = await chrome.storage.sync.get(SYNC_KEY);
+      const syncSettings = result[SYNC_KEY] as SyncSettings | undefined;
+      if (syncSettings) {
+        await this.update(syncSettings);
+      }
+    } catch {
+      // Firefox without Firefox Account sync — local storage is enough
     }
   }
 
@@ -38,6 +42,10 @@ export class ChromeSettingsAdapter implements SettingsPort {
       showFloatingToolbar: settings.showFloatingToolbar,
       enableStreaming: settings.enableStreaming,
     };
-    await chrome.storage.sync.set({ [SYNC_KEY]: syncPayload });
+    try {
+      await chrome.storage.sync.set({ [SYNC_KEY]: syncPayload });
+    } catch {
+      // Firefox without Firefox Account sync — local storage is enough
+    }
   }
 }

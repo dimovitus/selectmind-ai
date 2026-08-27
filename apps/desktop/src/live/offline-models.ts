@@ -56,10 +56,6 @@ export async function listOfflineModels(): Promise<ModelsListResult> {
   return invoke<ModelsListResult>('models_list');
 }
 
-export async function getOfflineModelStatus(modelId: string): Promise<ModelStatus> {
-  return invoke<ModelStatus>('models_status', { modelId });
-}
-
 export async function downloadOfflineModel(modelId: string): Promise<ModelStatus> {
   return invoke<ModelStatus>('models_download', { modelId });
 }

@@ -27,8 +27,10 @@ export async function prewarmSelectionOverlay(): Promise<void> {
 export async function showSelectionOverlay(snapshot: SelectionSnapshot): Promise<void> {
   const overlay = await getSelectionOverlayWindow();
   const monitor = await invoke<OverlayMonitor>('get_monitor_at_point', {
-    x: snapshot.x + Math.max(Math.floor(snapshot.width / 2), 1),
-    y: snapshot.y + Math.max(Math.floor(snapshot.height / 2), 1),
+    args: {
+      x: snapshot.x + Math.max(Math.floor(snapshot.width / 2), 1),
+      y: snapshot.y + Math.max(Math.floor(snapshot.height / 2), 1),
+    },
   });
 
   const payload = { snapshot, monitor };
