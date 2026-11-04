@@ -22,9 +22,10 @@ Select text, get instant AI answers. Explain, translate, chat in place — power
 
 ### Privacy
 
-- API keys are stored encrypted in your browser using Web Crypto.
+- API keys are stored encrypted in your browser using Web Crypto (AES-GCM).
 - Conversations are stored locally in IndexedDB — nothing is sent to SelectMind AI servers.
 - AI requests go directly from your browser to the provider you configure.
+- Full policy: `https://dimovitus.github.io/selectmind-ai/privacy.html` (also covers the desktop app).
 
 ### Getting Started
 
@@ -98,19 +99,23 @@ Initial release:
 
 ## Build & Package for Store
 
-```powershell
-cd "C:\Users\Dimovitus\Projects\AI Chrome"
+From the repository root (any OS with Node.js 20+):
+
+```bash
 npm install
+npm run package:store
+```
+
+Or manually:
+
+```bash
 npm run build
+# Then zip the contents of dist/ (not the project root).
+# On Windows PowerShell:
+#   Compress-Archive -Path dist\* -DestinationPath selectmind-ai-v0.1.1.zip
 ```
 
-Zip the `dist` folder (not the project root):
-
-```powershell
-Compress-Archive -Path dist\* -DestinationPath selectmind-ai-v0.1.0.zip
-```
-
-Upload `selectmind-ai-v0.1.0.zip` to the [Chrome Web Store Developer Dashboard](https://chrome.google.com/webstore/devconsole).
+Upload `selectmind-ai-v0.1.1.zip` (or the archive from `npm run package:store`) to the [Chrome Web Store Developer Dashboard](https://chrome.google.com/webstore/devconsole).
 
 ## Pre-Submit Checklist
 
@@ -121,5 +126,5 @@ Upload `selectmind-ai-v0.1.0.zip` to the [Chrome Web Store Developer Dashboard](
 - [ ] Test on fresh Chrome profile (install → onboarding → first action)
 - [ ] Publish privacy policy URL → `https://dimovitus.github.io/selectmind-ai/privacy.html`
 - [x] Prepare store screenshots → `docs/store-screenshots/` (`npm run capture:screenshots`)
-- [x] Package ZIP → `selectmind-ai-v0.1.0.zip` (`npm run package:store`)
+- [x] Package ZIP → `selectmind-ai-v0.1.1.zip` (`npm run package:store`)
 - [x] Review permissions in manifest match store justification

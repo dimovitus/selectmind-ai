@@ -26,50 +26,68 @@
 </head>
 <body>
   <h1>Privacy Policy</h1>
-  <p class="meta"><strong>SelectMind AI</strong> · Last updated: July 27, 2026</p>
+  <p class="meta"><strong>SelectMind AI</strong> · Last updated: November 4, 2026</p>
 
   <p>
-    SelectMind AI is a Chrome browser extension that helps you analyze, explain, translate,
-    and chat about text you select on web pages using AI providers you configure yourself.
+    SelectMind AI is a Chrome / Firefox browser extension and a desktop app (Windows / Linux)
+    that helps you analyze, explain, translate, and chat about selected text, OCR captures,
+    and (on desktop) live game UI using AI providers and translation engines you configure.
   </p>
 
   <h2>Summary</h2>
   <ul>
     <li>We do <strong>not</strong> operate servers that collect your personal data.</li>
     <li>Your settings, conversations, and API keys stay <strong>on your device</strong>.</li>
-    <li>When you run an AI action, requests go <strong>directly from your browser</strong> to the AI provider you chose (OpenAI, Anthropic, Google Gemini, Ollama, etc.).</li>
-    <li>We do <strong>not</strong> use analytics, advertising, or tracking in the extension.</li>
+    <li>When you run an AI action, requests go <strong>directly from your device</strong> to the AI provider you chose (OpenAI, Anthropic, Google Gemini, Ollama, etc.).</li>
+    <li>Desktop live translate may send OCR text to free/proxy engines you select, or keep it offline with Argos NMT.</li>
+    <li>We do <strong>not</strong> use analytics, advertising, or tracking.</li>
   </ul>
 
   <h2>Data stored locally</h2>
-  <p>The extension stores the following data locally in your browser:</p>
+  <p><strong>Browser extension</strong></p>
   <ul>
     <li><strong>Settings</strong> — theme, language preferences, toolbar layout, and similar options.</li>
-    <li><strong>API keys</strong> — encrypted using Web Crypto (AES-GCM) and saved in Chrome local storage. Keys are never sent to us.</li>
+    <li><strong>API keys</strong> — encrypted using Web Crypto (AES-GCM) and saved in browser local storage. Keys are never sent to us.</li>
     <li><strong>Conversations</strong> — chat history and messages in IndexedDB on your device.</li>
-    <li><strong>Custom actions & pipelines</strong> — prompts and workflows you create or import.</li>
+    <li><strong>Custom actions &amp; pipelines</strong> — prompts and workflows you create or import.</li>
   </ul>
-  <p>You can delete conversations from the side panel or clear all data by uninstalling the extension.</p>
+  <p><strong>Desktop app</strong></p>
+  <ul>
+    <li><strong>Settings</strong> — stored locally on the device.</li>
+    <li><strong>API keys</strong> — OS credential store (Windows Credential Manager / Linux Secret Service).</li>
+    <li><strong>Conversations</strong> — SQLite database on your device.</li>
+    <li><strong>Offline models</strong> — optional Argos NMT (and similar) files you download.</li>
+  </ul>
+  <p>You can delete conversations in the app UI or remove all data by uninstalling the extension / app.</p>
 
-  <h2>Data sent to third parties (AI providers)</h2>
+  <h2>Data sent to third parties</h2>
   <p>
-    When you trigger an action (Explain, Translate, Chat, etc.), the extension may include
-    in the request to your configured AI provider:
+    When you trigger an AI action (Explain, Translate, Chat, OCR, etc.), the client may include
+    in the request to your configured provider:
   </p>
   <ul>
-    <li>Text you selected on the page</li>
-    <li>Page title and URL</li>
-    <li>Screenshot images and OCR text when you use Screen OCR (Ctrl+Shift+X or side panel → OCR)</li>
+    <li>Text you selected</li>
+    <li>Page title and URL (extension) or window context (desktop)</li>
+    <li>Screenshot images and OCR text when you use screen capture / OCR</li>
     <li>Your prompt and conversation history for that thread</li>
   </ul>
   <p>
-    This data is sent <strong>only when you initiate an action</strong>, and only to the
-    provider and endpoint you configured. That provider’s own privacy policy applies
-    (for example OpenAI, Anthropic, or Google).
+    <strong>Live game translate (desktop):</strong> text from the screen region you chose may be
+    sent to Google, Bing, Lingva, LibreTranslate, or another engine you select. Offline Argos NMT
+    does not send that text off-device. AI-provider mode uses your configured provider.
+  </p>
+  <p>
+    Custom OpenAI-compatible base URLs receive the same kind of payload as other providers you configure.
+    Third-party privacy policies apply to those services.
   </p>
 
-  <h2>Permissions</h2>
-  <p>The extension requests Chrome permissions solely to provide its features:</p>
+  <h2>Extension API-key encryption</h2>
+  <p>
+    Keys are encrypted at rest in browser storage with a key derived from the extension installation.
+    This is not a user passphrase. Prefer the desktop OS keyring when you need stronger OS-level protection.
+  </p>
+
+  <h2>Permissions (browser extension)</h2>
   <ul>
     <li><strong>storage</strong> — save settings and encrypted API keys</li>
     <li><strong>activeTab</strong> — read selected text and page context on the current tab</li>
@@ -81,9 +99,9 @@
 
   <h2>Donations</h2>
   <p>
-    The extension may show an optional link to support development via Privat24.
-    Donations are handled entirely outside the extension by PrivatBank; we do not receive
-    or store payment data through the extension.
+    The product may show an optional link to support development via Privat24.
+    Donations are handled entirely outside SelectMind AI by PrivatBank; we do not receive
+    or store payment data through the extension or desktop app.
   </p>
 
   <h2>Children</h2>
