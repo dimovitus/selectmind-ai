@@ -139,8 +139,9 @@ selectmind-ai/
 | `npm run package:firefox` | Zip `dist-firefox` for sideload / AMO |
 | `npm run desktop:dev` | Desktop app with hot reload |
 | `npm run desktop:package` | Windows NSIS installer (unsigned) |
-| `npm run test` | Unit tests (root + workspaces) |
-| `npm run desktop:test` | Desktop-only Vitest |
+| `npm run test` | Unit tests (root Vitest — extension / shared) |
+| `npm run desktop:test` | Desktop Vitest |
+| `npm run desktop:test:all` | Desktop Vitest + Rust `cargo test` |
 | `npm run test:e2e` | E2E smoke tests (Playwright) |
 | `npm run lint` | ESLint |
 
@@ -194,7 +195,7 @@ Real-time subtitle/UI translation overlay for games (borderless windowed recomme
 
 Docs: [`docs/DESKTOP_LIVE_TRANSLATE.md`](docs/DESKTOP_LIVE_TRANSLATE.md) · Linux: [`docs/DESKTOP_LINUX.md`](docs/DESKTOP_LINUX.md) · offline sidecar: [`apps/desktop/sidecar/README.md`](apps/desktop/sidecar/README.md)
 
-**Desktop v0.2.x** — live translate + Continuous + Linux capture · **Extension v0.1.0** unchanged.
+**Desktop v0.2.x** — live translate + Continuous + Linux capture · **Extension v0.3.0** — configurable OCR action, resizable popups, LaTeX `\(...\)` / `\[...\]`.
 
 Docs: [`DESKTOP_PORTING_PLAN.md`](docs/DESKTOP_PORTING_PLAN.md) · [`DESKTOP_RELEASE.md`](docs/DESKTOP_RELEASE.md) (smoke test) · [`DESKTOP_TOOLBAR.md`](docs/DESKTOP_TOOLBAR.md)
 
