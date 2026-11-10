@@ -39,6 +39,7 @@ export class ChromeSettingsAdapter implements SettingsPort {
       theme: settings.theme,
       responseLanguage: settings.responseLanguage,
       toolbarActionIds: settings.toolbarActionIds,
+      screenshotActionId: settings.screenshotActionId,
       showFloatingToolbar: settings.showFloatingToolbar,
       enableStreaming: settings.enableStreaming,
     };

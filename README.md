@@ -17,6 +17,7 @@ Select text, run Explain / Translate / Summarize / custom actions from a floatin
 
 - **Select & act** — Highlight text and run Explain, Translate, Summarize, Rewrite, and 30+ built-in actions from a floating toolbar.
 - **Chat in place** — Continue the conversation in the same popup: ask follow-ups, resize the window, drag it anywhere.
+- **Configurable OCR** — Bind the screen-capture button (`Ctrl+Shift+X`) to any action in Settings, then edit that action's prompt.
 - **Side panel workspace** — Open any thread in a dedicated workspace with conversation history.
 - **Command palette** — Press `Ctrl+Shift+P` to fuzzy-search actions and pipelines from anywhere.
 - **Your providers** — OpenAI, Anthropic, Gemini, Ollama, and any OpenAI-compatible API. Keys are encrypted locally.

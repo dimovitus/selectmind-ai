@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { AppSettings, SettingsPort } from '@selectmind/core';
+import type { ActionId, AppSettings, SettingsPort } from '@selectmind/core';
 import { SettingsRepository } from '@/infrastructure/storage/repositories/settings.repository';
 
 const baseSettings: AppSettings = {
@@ -8,6 +8,7 @@ const baseSettings: AppSettings = {
   theme: 'dark',
   responseLanguage: 'auto',
   toolbarActionIds: [],
+  screenshotActionId: 'act_explain_screenshot' as ActionId,
   maxToolbarActions: 7,
   conversationRetentionDays: 90,
   saveConversationHistory: true,

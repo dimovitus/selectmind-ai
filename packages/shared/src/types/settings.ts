@@ -7,6 +7,8 @@ export interface Settings {
   theme: 'dark' | 'light' | 'system';
   responseLanguage: ResponseLanguageCode;
   toolbarActionIds: ActionId[];
+  /** Action run by the OCR / screen-capture button and Ctrl+Shift+X. */
+  screenshotActionId: ActionId;
   maxToolbarActions: number;
   conversationRetentionDays: number;
   saveConversationHistory: boolean;
@@ -21,6 +23,7 @@ export const DEFAULT_SETTINGS: Settings = {
   theme: 'dark',
   responseLanguage: 'auto',
   toolbarActionIds: [],
+  screenshotActionId: 'act_explain_screenshot' as ActionId,
   maxToolbarActions: 7,
   conversationRetentionDays: 90,
   saveConversationHistory: true,
@@ -33,6 +36,7 @@ export interface SyncSettings {
   theme: Settings['theme'];
   responseLanguage: ResponseLanguageCode;
   toolbarActionIds: ActionId[];
+  screenshotActionId: ActionId;
   showFloatingToolbar: boolean;
   enableStreaming: boolean;
 }

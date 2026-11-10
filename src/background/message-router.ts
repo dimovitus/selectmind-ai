@@ -18,6 +18,8 @@ import { PipelineSchema } from '@/domain/provider/provider.schema';
 import { PushEmitter } from '@/infrastructure/messaging/rpc-client';
 import { refreshContextMenus } from './context-menus';
 import { localizeAction, localizeActions } from '@/shared/utils/localize-action';
+import { pickScreenshotAction } from './screenshot-action';
+import { SCREENSHOT_ACTION_ID } from '@/shared/constants/screenshot-action';
 
 const pushEmitter = new PushEmitter();
 
@@ -72,6 +74,13 @@ export function setupMessageRouter(): void {
     return localizeAction(action, settings.responseLanguage);
   });
 
+  rpcServer.register('action:screenshot', async () => {
+    await ensureDatabaseSeeded();
+    const [actions, settings] = await Promise.all([actionRepo.getAll(), settingsRepo.get()]);
+    const action = pickScreenshotAction(actions, settings.screenshotActionId);
+    return action ? localizeAction(action, settings.responseLanguage) : null;
+  });
+
   rpcServer.register('action:save', async ({ action }) => {
     const parsed = ActionSchema.parse(action);
     const existing = await actionRepo.getById(parsed.id);
@@ -97,10 +106,15 @@ export function setupMessageRouter(): void {
     await actionRepo.delete(actionId);
 
     const settings = await settingsRepo.get();
+    const updates: Partial<typeof settings> = {};
     if (settings.toolbarActionIds.includes(actionId)) {
-      await settingsRepo.update({
-        toolbarActionIds: settings.toolbarActionIds.filter((id) => id !== actionId),
-      });
+      updates.toolbarActionIds = settings.toolbarActionIds.filter((id) => id !== actionId);
+    }
+    if (settings.screenshotActionId === actionId) {
+      updates.screenshotActionId = SCREENSHOT_ACTION_ID;
+    }
+    if (Object.keys(updates).length > 0) {
+      await settingsRepo.update(updates);
     }
   });
 

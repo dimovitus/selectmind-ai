@@ -24,6 +24,8 @@ export interface AppSettings {
   theme: ThemeMode;
   responseLanguage: ResponseLanguageCode;
   toolbarActionIds: ActionId[];
+  /** Action run by the OCR / screen-capture button and Ctrl+Shift+X. */
+  screenshotActionId: ActionId;
   maxToolbarActions: number;
   conversationRetentionDays: number;
   saveConversationHistory: boolean;

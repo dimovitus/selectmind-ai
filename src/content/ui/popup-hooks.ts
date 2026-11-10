@@ -4,39 +4,97 @@ import {
   useRef,
   useState,
   type MouseEvent as ReactMouseEvent,
+  type PointerEvent as ReactPointerEvent,
   type RefObject,
 } from 'react';
 
 const VIEWPORT_MARGIN = 12;
+const SIZE_STORAGE_PREFIX = 'saywa_popup_size_';
 
-const POPUP_SIZE_KEY = 'saywa-popup-size';
-const DEFAULT_WIDTH = 420;
-const DEFAULT_HEIGHT = 480;
-
-interface PopupSize {
+export interface PopupSize {
   width: number;
   height: number;
 }
 
-function readStoredSize(): PopupSize | null {
-  try {
-    const raw = sessionStorage.getItem(POPUP_SIZE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as PopupSize;
-    if (typeof parsed.width === 'number' && typeof parsed.height === 'number') {
-      return parsed;
-    }
-  } catch {
-    // ignore
-  }
-  return null;
+export interface ResizablePopupOptions {
+  defaultWidth: number;
+  defaultHeight: number;
+  minWidth?: number;
+  minHeight?: number;
+  storageKey: string;
 }
 
-function storeSize(size: PopupSize): void {
+export interface ResizablePopupResult {
+  size: PopupSize;
+  resizing: boolean;
+  onResizeStart: (event: ReactPointerEvent<HTMLElement>) => void;
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(value, max));
+}
+
+function clampSize(
+  width: number,
+  height: number,
+  minWidth: number,
+  minHeight: number,
+): PopupSize {
+  const maxWidth = Math.max(minWidth, window.innerWidth - VIEWPORT_MARGIN * 2);
+  const maxHeight = Math.max(minHeight, window.innerHeight - VIEWPORT_MARGIN * 2);
+  return {
+    width: Math.round(clamp(width, minWidth, maxWidth)),
+    height: Math.round(clamp(height, minHeight, maxHeight)),
+  };
+}
+
+function isValidSize(value: unknown): value is PopupSize {
+  if (typeof value !== 'object' || value === null) return false;
+  const candidate = value as Partial<PopupSize>;
+  return (
+    typeof candidate.width === 'number' &&
+    Number.isFinite(candidate.width) &&
+    candidate.width > 0 &&
+    typeof candidate.height === 'number' &&
+    Number.isFinite(candidate.height) &&
+    candidate.height > 0
+  );
+}
+
+async function readStoredSize(storageKey: string): Promise<PopupSize | null> {
   try {
-    sessionStorage.setItem(POPUP_SIZE_KEY, JSON.stringify(size));
+    if (typeof chrome !== 'undefined') {
+      const result = await chrome.storage.local.get(storageKey);
+      const stored: unknown = result[storageKey];
+      if (isValidSize(stored)) return stored;
+    }
   } catch {
-    // ignore
+    // Fall through to sessionStorage.
+  }
+
+  try {
+    const raw = sessionStorage.getItem(SIZE_STORAGE_PREFIX + storageKey);
+    if (!raw) return null;
+    const parsed: unknown = JSON.parse(raw);
+    return isValidSize(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function storeSize(storageKey: string, size: PopupSize): void {
+  try {
+    if (typeof chrome !== 'undefined') {
+      void chrome.storage.local.set({ [storageKey]: size }).catch(() => {});
+    }
+  } catch {
+    // Ignore storage failures; the popup is still usable.
+  }
+
+  try {
+    sessionStorage.setItem(SIZE_STORAGE_PREFIX + storageKey, JSON.stringify(size));
+  } catch {
+    // Ignore storage failures.
   }
 }
 
@@ -97,9 +155,29 @@ export function usePopupDrag(
   const [dragging, setDragging] = useState(false);
   const dragRef = useRef<{ x: number; y: number; top: number; left: number } | null>(null);
 
+  const initialTop = initial.top;
+  const initialLeft = initial.left;
+
   useEffect(() => {
-    setPosition(initial);
-  }, [initial.top, initial.left]);
+    setPosition({ top: initialTop, left: initialLeft });
+  }, [initialTop, initialLeft]);
+
+  // Keep the popup inside the viewport after it is resized (or its content changes).
+  useEffect(() => {
+    const el = popupRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+
+    const observer = new ResizeObserver(() => {
+      setPosition((current) => {
+        const next = clampPopupPosition(current.top, current.left, el);
+        return next.top === current.top && next.left === current.left ? current : next;
+      });
+    });
+    observer.observe(el);
+    return () => {
+      observer.disconnect();
+    };
+  }, [popupRef]);
 
   const onHeaderMouseDown = useCallback(
     (event: ReactMouseEvent) => {
@@ -146,44 +224,99 @@ export function usePopupDrag(
   return { position, dragging, onHeaderMouseDown };
 }
 
-/** Native resize + font scale based on popup dimensions. */
+/**
+ * In-place resizing for a floating popup.
+ *
+ * The size is rendered by React (not written imperatively), so it survives
+ * streaming re-renders. Size is persisted in chrome.storage.local and restored
+ * on the next popup.
+ */
 export function useResizablePopup(
-  ref: RefObject<HTMLElement | null>,
-  baseWidth = DEFAULT_WIDTH,
-  baseHeight = DEFAULT_HEIGHT,
-): void {
+  _ref: RefObject<HTMLElement | null>,
+  options: ResizablePopupOptions,
+): ResizablePopupResult {
+  const {
+    defaultWidth,
+    defaultHeight,
+    minWidth = 340,
+    minHeight = 260,
+    storageKey,
+  } = options;
+
+  const [size, setSize] = useState<PopupSize>(() =>
+    clampSize(defaultWidth, defaultHeight, minWidth, minHeight),
+  );
+  const [resizing, setResizing] = useState(false);
+  const sizeRef = useRef(size);
+  const didResizeRef = useRef(false);
+  sizeRef.current = size;
+
   useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-
-    const stored = readStoredSize();
-    if (stored) {
-      el.style.width = `${stored.width}px`;
-      el.style.height = `${stored.height}px`;
-    }
-
-    let saveTimer: number | undefined;
-
-    const updateScale = () => {
-      const width = el.offsetWidth;
-      const height = el.offsetHeight;
-      const scale = Math.min(Math.max(Math.min(width / baseWidth, height / baseHeight), 0.85), 1.4);
-      el.style.setProperty('--saywa-popup-scale', scale.toFixed(3));
-
-      window.clearTimeout(saveTimer);
-      saveTimer = window.setTimeout(() => {
-        storeSize({ width, height });
-      }, 200);
-    };
-
-    updateScale();
-
-    const ro = new ResizeObserver(() => updateScale());
-    ro.observe(el);
-
+    let cancelled = false;
+    void readStoredSize(storageKey).then((stored) => {
+      if (cancelled || !stored) return;
+      setSize(clampSize(stored.width, stored.height, minWidth, minHeight));
+    });
     return () => {
-      ro.disconnect();
-      window.clearTimeout(saveTimer);
+      cancelled = true;
     };
-  }, [ref, baseWidth, baseHeight]);
+  }, [storageKey, minWidth, minHeight]);
+
+  useEffect(() => {
+    const onWindowResize = () => {
+      setSize((current) => clampSize(current.width, current.height, minWidth, minHeight));
+    };
+    window.addEventListener('resize', onWindowResize);
+    return () => {
+      window.removeEventListener('resize', onWindowResize);
+    };
+  }, [minWidth, minHeight]);
+
+  const onResizeStart = useCallback(
+    (event: ReactPointerEvent<HTMLElement>) => {
+      event.preventDefault();
+      event.stopPropagation();
+
+      const startX = event.clientX;
+      const startY = event.clientY;
+      const startWidth = sizeRef.current.width;
+      const startHeight = sizeRef.current.height;
+      setResizing(true);
+
+      const onMove = (moveEvent: PointerEvent) => {
+        setSize(
+          clampSize(
+            startWidth + moveEvent.clientX - startX,
+            startHeight + moveEvent.clientY - startY,
+            minWidth,
+            minHeight,
+          ),
+        );
+      };
+
+      const finish = () => {
+        setResizing(false);
+        window.removeEventListener('pointermove', onMove);
+        window.removeEventListener('pointerup', finish);
+        window.removeEventListener('pointercancel', finish);
+      };
+
+      window.addEventListener('pointermove', onMove);
+      window.addEventListener('pointerup', finish);
+      window.addEventListener('pointercancel', finish);
+    },
+    [minWidth, minHeight],
+  );
+
+  useEffect(() => {
+    if (resizing) {
+      didResizeRef.current = true;
+      return;
+    }
+    if (!didResizeRef.current) return;
+    didResizeRef.current = false;
+    storeSize(storageKey, sizeRef.current);
+  }, [resizing, storageKey]);
+
+  return { size, resizing, onResizeStart };
 }

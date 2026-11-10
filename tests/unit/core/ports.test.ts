@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { PlatformPorts } from '@selectmind/core';
+import type { ActionId, PlatformPorts } from '@selectmind/core';
 
 describe('@selectmind/core ports', () => {
   it('exports PlatformPorts shape for compile-time contracts', () => {
@@ -17,6 +17,7 @@ describe('@selectmind/core ports', () => {
           theme: 'dark',
           responseLanguage: 'auto',
           toolbarActionIds: [],
+          screenshotActionId: 'act_explain_screenshot' as ActionId,
           maxToolbarActions: 7,
           conversationRetentionDays: 90,
           saveConversationHistory: true,
@@ -30,6 +31,7 @@ describe('@selectmind/core ports', () => {
           theme: 'dark',
           responseLanguage: 'auto',
           toolbarActionIds: [],
+          screenshotActionId: 'act_explain_screenshot' as ActionId,
           maxToolbarActions: 7,
           conversationRetentionDays: 90,
           saveConversationHistory: true,

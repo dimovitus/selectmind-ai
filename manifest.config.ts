@@ -4,7 +4,7 @@ import { PRODUCT_NAME } from './packages/shared/src/constants/brand';
 const manifest: ManifestV3Export = {
   manifest_version: 3,
   name: PRODUCT_NAME,
-  version: '0.1.1',
+  version: '0.3.0',
   description: 'SelectMind AI — explain, translate, and chat about any text on the web',
   icons: {
     '16': 'assets/icons/icon-16.png',

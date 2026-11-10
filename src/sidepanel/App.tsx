@@ -28,6 +28,17 @@ function Workspace() {
     queryFn: () => rpcClient.call('settings:get', undefined),
   });
 
+  const { data: screenshotAction } = useQuery({
+    queryKey: ['screenshot-action', settings?.screenshotActionId, settings?.responseLanguage],
+    queryFn: () => rpcClient.call('action:screenshot', undefined),
+    enabled: !!settings,
+  });
+
+  const ocrIcon = screenshotAction?.icon ?? '📸';
+  const ocrTitle = screenshotAction
+    ? `Capture a screen region and run “${screenshotAction.name}” (Ctrl+Shift+X)`
+    : OCR_BUTTON_TITLE;
+
   useTheme(settings?.theme ?? 'dark');
 
   const { data: conversations = [], refetch: refetchList } = useQuery({
@@ -126,11 +137,11 @@ function Workspace() {
           <Button
             variant="outline"
             size="sm"
-            title={OCR_BUTTON_TITLE}
+            title={ocrTitle}
             disabled={ocrBusy}
             onClick={() => void handleOcrCapture()}
           >
-            {ocrBusy ? '…' : '📸'} {OCR_BUTTON_LABEL}
+            {ocrBusy ? '…' : ocrIcon} {OCR_BUTTON_LABEL}
           </Button>
           {activeConversationId && (
             <Button variant="ghost" size="sm" onClick={() => setActiveConversation(null)}>
@@ -180,10 +191,10 @@ function Workspace() {
                   <Button
                     variant="outline"
                     disabled={ocrBusy}
-                    title={OCR_BUTTON_TITLE}
+                    title={ocrTitle}
                     onClick={() => void handleOcrCapture()}
                   >
-                    {ocrBusy ? 'Selecting area…' : '📸 Capture screen (OCR)'}
+                    {ocrBusy ? 'Selecting area…' : `${ocrIcon} Capture screen (OCR)`}
                   </Button>
                   <p className="text-xs text-muted-foreground">
                     <kbd className="rounded border px-1.5 py-0.5">Ctrl+Shift+S</kbd> toggle panel ·{' '}

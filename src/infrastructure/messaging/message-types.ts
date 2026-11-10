@@ -16,6 +16,8 @@ export interface RpcRequestMap {
   'action:list': { payload: undefined; response: Action[] };
   'action:toolbar': { payload: undefined; response: Action[] };
   'action:get': { payload: { actionId: ActionId }; response: Action | null };
+  /** Resolve the action bound to the OCR / screen-capture button. */
+  'action:screenshot': { payload: undefined; response: Action | null };
   'action:save': { payload: { action: Action }; response: Action };
   'action:delete': { payload: { actionId: ActionId }; response: void };
   'action:execute': {

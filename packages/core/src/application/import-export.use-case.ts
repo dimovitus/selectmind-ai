@@ -16,6 +16,7 @@ export interface ExportBundle {
     | 'theme'
     | 'responseLanguage'
     | 'toolbarActionIds'
+    | 'screenshotActionId'
     | 'showFloatingToolbar'
     | 'enableStreaming'
     | 'defaultProviderId'
@@ -41,6 +42,7 @@ export function buildExportBundle(data: {
       theme: data.settings.theme,
       responseLanguage: data.settings.responseLanguage,
       toolbarActionIds: data.settings.toolbarActionIds,
+      screenshotActionId: data.settings.screenshotActionId,
       showFloatingToolbar: data.settings.showFloatingToolbar,
       enableStreaming: data.settings.enableStreaming,
       defaultProviderId: data.settings.defaultProviderId,

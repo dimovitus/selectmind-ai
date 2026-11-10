@@ -83,6 +83,13 @@ Required statements:
 - API keys and conversations stored locally
 - Third-party AI providers receive user prompts per their policies
 
+## Version Notes (0.3.0)
+
+- Bind the OCR / screen-capture button to any action from Settings → General → Screen capture / OCR
+- Edit the bound action's prompt directly from the same settings card
+- Floating popups open wider (640×540 quick, 640×600 chat) with 14px text, a resize handle, and saved size
+- Render `\(...\)` and `\[...\]` LaTeX in chat and OCR results (in addition to `$...$` / `$$...$$`)
+
 ## Version Notes (0.1.1)
 
 - Fix context menu registration on install (right-click selected text → SelectMind AI)

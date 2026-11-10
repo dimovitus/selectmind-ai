@@ -8,8 +8,8 @@ import bash from 'highlight.js/lib/languages/bash';
 import json from 'highlight.js/lib/languages/json';
 import css from 'highlight.js/lib/languages/css';
 import xml from 'highlight.js/lib/languages/xml';
-import katex from 'katex';
 import 'katex/dist/katex.min.css';
+import { escapeHtml, renderMath } from './render-math';
 
 hljs.registerLanguage('javascript', javascript);
 hljs.registerLanguage('typescript', typescript);
@@ -19,32 +19,6 @@ hljs.registerLanguage('json', json);
 hljs.registerLanguage('css', css);
 hljs.registerLanguage('html', xml);
 hljs.registerLanguage('xml', xml);
-
-function escapeHtml(text: string): string {
-  return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
-
-function renderMath(text: string): string {
-  let result = text.replace(/\$\$([\s\S]+?)\$\$/g, (_m, tex: string) => {
-    try {
-      return katex.renderToString(tex.trim(), { displayMode: true, throwOnError: false });
-    } catch {
-      return `<span class="math-error">${escapeHtml(tex)}</span>`;
-    }
-  });
-  result = result.replace(/(?<!\$)\$(?!\$)([^\$\n]+?)\$(?!\$)/g, (_m, tex: string) => {
-    try {
-      return katex.renderToString(tex.trim(), { displayMode: false, throwOnError: false });
-    } catch {
-      return `<span class="math-error">${escapeHtml(tex)}</span>`;
-    }
-  });
-  return result;
-}
 
 const renderer: RendererObject = {
   code({ text, lang }) {

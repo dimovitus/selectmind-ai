@@ -26,6 +26,7 @@ interface ActivePopup {
   conversationId: ConversationId;
   rect: SelectionRect;
   mode: 'quick' | 'chat';
+  hideInitialUserMessage?: boolean;
 }
 
 function ContentApp() {
@@ -68,7 +69,12 @@ function ContentApp() {
   }, []);
 
   const handleActionResult = useCallback(
-    (action: Action, conversationId: ConversationId, rect: SelectionRect) => {
+    (
+      action: Action,
+      conversationId: ConversationId,
+      rect: SelectionRect,
+      options?: { hideInitialUserMessage?: boolean },
+    ) => {
       if (action.outputMode === 'clipboard') {
         void rpcClient.call('conversation:messages', { conversationId }).then(({ messages }) => {
           const last = messages.filter((m) => m.role === 'assistant').pop();
@@ -77,10 +83,22 @@ function ContentApp() {
         return;
       }
       if (action.outputMode === 'popup') {
-        setPopup({ action, conversationId, rect, mode: 'quick' });
+        setPopup({
+          action,
+          conversationId,
+          rect,
+          mode: 'quick',
+          hideInitialUserMessage: options?.hideInitialUserMessage,
+        });
         setToolbar(null);
       } else if (action.outputMode === 'chat') {
-        setPopup({ action, conversationId, rect, mode: 'chat' });
+        setPopup({
+          action,
+          conversationId,
+          rect,
+          mode: 'chat',
+          hideInitialUserMessage: options?.hideInitialUserMessage,
+        });
         setToolbar(null);
       } else if (action.outputMode === 'workspace') {
         void rpcClient.call('conversation:promote', { conversationId, mode: 'workspace' });
@@ -99,11 +117,11 @@ function ContentApp() {
     setPaletteOpen(false);
 
     try {
+      const action = await rpcClient.call('action:screenshot', undefined);
+      if (!action) return;
+
       const screenshot = await runScreenCaptureFlow();
       if (!screenshot) return;
-
-      const action = await rpcClient.call('action:get', { actionId: SCREENSHOT_ACTION_ID });
-      if (!action) return;
 
       const context = await buildScreenshotPageContext(screenshot);
       const result = await rpcClient.call('action:execute', { actionId: action.id, context });
@@ -125,7 +143,9 @@ function ContentApp() {
           screenshot.height,
         ),
       );
-      handleActionResult(action, result.conversationId, rect);
+      handleActionResult(action, result.conversationId, rect, {
+        hideInitialUserMessage: true,
+      });
     } finally {
       captureInProgressRef.current = false;
       void chrome.runtime.sendMessage({ type: 'saywa:capture-screen:finished' }).catch(() => {});
@@ -310,6 +330,7 @@ function ContentApp() {
             action={popup.action}
             conversationId={popup.conversationId}
             rect={popup.rect}
+            hideInitialUserMessage={popup.hideInitialUserMessage}
             onClose={() => closePopup(popup.conversationId)}
             onOpenWorkspace={() => handleOpenWorkspace(popup.conversationId)}
           />

@@ -74,11 +74,11 @@ export function ActionsSection({
         )}
         <button
           type="button"
-          className={`h-5 w-9 rounded-full transition-colors ${action.isEnabled ? 'bg-primary' : 'bg-muted'}`}
+          className={`relative h-5 w-9 rounded-full transition-colors ${action.isEnabled ? 'bg-primary' : 'bg-muted'}`}
           onClick={() => toggleMutation.mutate(action)}
         >
           <span
-            className={`block h-4 w-4 rounded-full bg-white transition-transform ${action.isEnabled ? 'translate-x-4' : 'translate-x-0.5'}`}
+            className={`absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${action.isEnabled ? 'translate-x-4' : 'translate-x-0.5'}`}
           />
         </button>
       </div>

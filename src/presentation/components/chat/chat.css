@@ -363,3 +363,22 @@
 }
 
 /* Markdown inside chat inherits from saywa-markdown in content.css or globals */
+
+/* KaTeX — keep long equations inside the floating window. */
+.saywa-markdown .katex {
+  font-size: 1.05em;
+  white-space: normal;
+}
+
+.saywa-markdown .katex-display {
+  max-width: 100%;
+  margin: 8px 0;
+  padding: 2px 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  text-align: center;
+}
+
+.saywa-markdown p:has(.katex) {
+  white-space: normal;
+}

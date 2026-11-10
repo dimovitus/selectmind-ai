@@ -158,7 +158,6 @@
 /* Quick Action Popup */
 .saywa-popup {
   pointer-events: auto;
-  width: min(420px, calc(100vw - 32px));
   background: rgba(24, 24, 27, 0.97);
   border: 1px solid rgba(63, 63, 70, 0.8);
   border-radius: 12px;
@@ -172,26 +171,43 @@
 .saywa-popup-chat {
   display: flex;
   flex-direction: column;
-  width: 420px;
-  height: 480px;
-  min-width: 300px;
-  min-height: 260px;
-  max-width: calc(100vw - 24px);
-  max-height: calc(100vh - 24px);
-  resize: both;
-  font-size: calc(13px * var(--saywa-popup-scale, 1));
+  font-size: 14px;
 }
 
-.saywa-popup-chat::after {
+.saywa-popup-resize-handle {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 18px;
+  height: 18px;
+  z-index: 5;
+  cursor: nwse-resize;
+  touch-action: none;
+}
+
+.saywa-popup-resize-handle::before {
   content: '';
   position: absolute;
-  right: 3px;
-  bottom: 3px;
-  width: 10px;
-  height: 10px;
-  border-right: 2px solid rgba(161, 161, 170, 0.5);
-  border-bottom: 2px solid rgba(161, 161, 170, 0.5);
-  pointer-events: none;
+  right: 4px;
+  bottom: 4px;
+  width: 9px;
+  height: 9px;
+  border-right: 2px solid rgba(161, 161, 170, 0.7);
+  border-bottom: 2px solid rgba(161, 161, 170, 0.7);
+  border-radius: 0 0 2px 0;
+}
+
+.saywa-popup-resize-handle:hover::before {
+  border-color: #fafafa;
+}
+
+.saywa-popup-resizing {
+  user-select: none;
+}
+
+.saywa-popup-resizing,
+.saywa-popup-resizing * {
+  cursor: nwse-resize !important;
 }
 
 .saywa-popup-drag-handle {
@@ -240,7 +256,7 @@
   flex: 1;
   min-height: 0;
   max-height: none;
-  padding: 0 12px 12px;
+  padding: 0 12px 18px;
   display: flex;
   flex-direction: column;
 }
@@ -263,7 +279,7 @@
 
 .saywa-popup-title {
   flex: 1;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   color: #fafafa;
 }
@@ -420,14 +436,7 @@
 /* Chat Popup */
 .saywa-chat-popup {
   pointer-events: auto;
-  width: 440px;
-  height: 480px;
-  min-width: 320px;
-  min-height: 280px;
-  max-width: calc(100vw - 24px);
-  max-height: calc(100vh - 24px);
-  resize: both;
-  font-size: calc(13px * var(--saywa-popup-scale, 1));
+  font-size: 14px;
   background: rgba(24, 24, 27, 0.97);
   border: 1px solid rgba(63, 63, 70, 0.8);
   border-radius: 12px;
@@ -438,18 +447,6 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-}
-
-.saywa-chat-popup::after {
-  content: '';
-  position: absolute;
-  right: 3px;
-  bottom: 3px;
-  width: 10px;
-  height: 10px;
-  border-right: 2px solid rgba(161, 161, 170, 0.5);
-  border-bottom: 2px solid rgba(161, 161, 170, 0.5);
-  pointer-events: none;
 }
 
 .saywa-chat-popup .saywa-chat-popup-header {
@@ -468,14 +465,14 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 12px;
+  padding: 11px 14px;
   border-bottom: 1px solid rgba(63, 63, 70, 0.6);
   flex-shrink: 0;
 }
 
 .saywa-chat-popup-title {
   flex: 1;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   color: #fafafa;
 }
@@ -503,7 +500,7 @@
 .saywa-chat-popup-body {
   flex: 1;
   overflow: hidden;
-  padding: 0 12px 12px;
+  padding: 0 14px 18px;
   display: flex;
   flex-direction: column;
   min-height: 0;

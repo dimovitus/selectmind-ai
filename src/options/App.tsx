@@ -160,7 +160,12 @@ function OptionsContent() {
 
       <main className="mx-auto max-w-4xl space-y-6 p-8">
         {tab === 'general' && (
-          <GeneralSettings settings={settings} providers={providers} />
+          <GeneralSettings
+            settings={settings}
+            providers={providers}
+            actions={actions}
+            onEditAction={(action) => setEditor({ mode: 'edit', action })}
+          />
         )}
         {tab === 'providers' && (
           <ProviderSection providers={providers} />
